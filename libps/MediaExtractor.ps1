@@ -1,0 +1,6 @@
+﻿class MediaExtractor {
+    [string]$SourceFile;
+
+
+
+}

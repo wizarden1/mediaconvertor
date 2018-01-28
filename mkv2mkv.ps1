@@ -37,11 +37,16 @@ $extension="MKV"
 
 #General Paths
 $multimedia = Join-Path $(Get-Location).Drive.Root "Multimedia\Programs"
-$root_path = Join-Path $multimedia "Utils"
+$root_path = $(Get-Location).Path
 $tools_path = Join-Path $root_path "tools"
 $enctemp = Join-Path $root_path "temp"
 $out = Join-Path $root_path "out"
 $in = Join-Path $root_path "in"
+
+#Prepare base folders
+if (-not $(Test-Path -LiteralPath $in)){New-Item -Path $root_path -Name "in" -ItemType "directory"}
+if (-not $(Test-Path -LiteralPath $out)){New-Item -Path $root_path -Name "out" -ItemType "directory"}
+if (-not $(Test-Path -LiteralPath $enctemp)){New-Item -Path $root_path -Name "temp" -ItemType "directory"}
 
 #Tools
 $neroAacEnc_path = Join-Path $tools_path "neroAacEnc.exe"
