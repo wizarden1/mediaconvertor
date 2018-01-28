@@ -1,0 +1,5 @@
+Import("C:\Multimedia\Programs\AviSynth\plugins\global.avs")
+DirectShowSource("C:\Multimedia\Programs\Utils\temp\tempMKV.MKV", fps=119.88, convertfps=true)
+ConvertToYUY2()
+MultiDecimate(pass=1)
+AssumeFPS(50) 

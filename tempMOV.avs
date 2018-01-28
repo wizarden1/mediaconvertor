@@ -1,0 +1,5 @@
+Import("C:\Multimedia\Programs\AviSynth\plugins\global.avs")
+DirectShowSource("temp\temp.mov")
+ConvertToYV12()
+#ConvertToMono()
+#ResampleAudio(22050)

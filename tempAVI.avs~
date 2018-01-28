@@ -1,0 +1,7 @@
+#Import("C:\Multimedia\Programs\AviSynth\plugins\global.avs")
+#AVISource("temp\tempAVI.avi")
+DirectShowSource("temp\tempAVI.avi")
+#ChangeFPS(15)
+ConvertToYV12()
+#ConvertToMono()
+#ResampleAudio(22050)
