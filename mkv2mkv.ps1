@@ -20,7 +20,7 @@ $preset="veryslow"		#ultrafast,superfast,veryfast,faster,fast,medium,slow,slower
 
 
 #Filters
-$crop=@($false,20,20,20,20) #crop:enabled,left,top,right,bottom
+$crop=@($false,0,0,0,0) #crop:enabled,left,top,right,bottom
 #$resize=@($true,1280,720,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,960,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 $resize=@($false,0,0,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
@@ -30,7 +30,7 @@ $resize=@($false,0,0,"lanczos","") #resize:enabled,width,height,method,", additi
 
 #Advanced Config
 $del_original=$true
-$debug=$false
+#$debug=$false
 #$DebugPreference="Continue"  #Enable Debug mode
 $shutdown=$false
 $extension="MKV"
@@ -52,7 +52,6 @@ if (-not $(Test-Path -LiteralPath $enctemp)){New-Item -Path $root_path -Name "te
 $neroAacEnc_path = Join-Path $tools_path "neroAacEnc.exe"
 $MediaInfoWrapper_path = Join-Path $tools_path "MediaInfoWrapper.dll"
 $x264_path = Join-Path $tools_path "x264\x264_64.exe"
-$x265_path = Join-Path $tools_path "x265\x265_64-8bit[icc].exe"
 $mkvmerge_path = Join-Path $tools_path "mkvtoolnix\mkvmerge.exe"
 $mkvextract_path = Join-Path $tools_path "mkvtoolnix\mkvextract.exe"
 $oggdec_path = Join-Path $tools_path "oggdec.exe"
@@ -65,16 +64,25 @@ Write-Debug "Debug Mode Enabled"
 
 #Check Prerequisite
 "Checking Prerequisite..."
+Write-Debug "Checking $neroAacEnc_path"
 if (-not $(Test-Path -LiteralPath $neroAacEnc_path)){Write-Host "$neroAacEnc_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $MediaInfoWrapper_path"
 if (-not $(Test-Path -LiteralPath $MediaInfoWrapper_path)){Write-Host "$MediaInfoWrapper_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $x264_path"
 if (-not $(Test-Path -LiteralPath $x264_path)){Write-Host "$x264_path not found" -ForegroundColor Red;break}
-if (-not $(Test-Path -LiteralPath $x265_path)){Write-Host "$x265_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $mkvmerge_path"
 if (-not $(Test-Path -LiteralPath $mkvmerge_path)){Write-Host "$mkvmerge_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $mkvextract_path"
 if (-not $(Test-Path -LiteralPath $mkvextract_path)){Write-Host "$mkvextract_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $oggdec_path"
 if (-not $(Test-Path -LiteralPath $oggdec_path)){Write-Host "$oggdec_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $eac3to"
 if (-not $(Test-Path -LiteralPath $eac3to)){Write-Host "$eac3to not found" -ForegroundColor Red;break}
+Write-Debug "Checking $faad_path"
 if (-not $(Test-Path -LiteralPath $faad_path)){Write-Host "$faad_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $wavi"
 if (-not $(Test-Path -LiteralPath $wavi)){Write-Host "$wavi not found" -ForegroundColor Red;break}
+Write-Debug "Checking $avs2yuv_path"
 if (-not $(Test-Path -LiteralPath $avs2yuv_path)){Write-Host "$avs2yuv_path not found" -ForegroundColor Red;break}
 
 ####################################################################################
@@ -185,7 +193,7 @@ class H264 {
 # Creating Filter
 # --video-filter <filter>:<option>=<value>,<option>=<value>/<filter>:<option>=<value>
 		$filters = @()
-		if ($this.Crop.Enabled) {$filters += "$($this.Crop.Left),$($this.Crop.Top),$($this.Crop.Right),$($this.Crop.Bottom)"}
+		if ($this.Crop.Enabled) {$filters += "crop:$($this.Crop.Left),$($this.Crop.Top),$($this.Crop.Right),$($this.Crop.Bottom)"}
 		if ($this.Resize.Enabled) {$filters += "resize:width=$($this.Resize.Width),height=$($this.Resize.Height),method=$($this.Resize.Method)"}
 #		if ($this.Pulldown) {$filters += "select_every:"+$($this.Pulldown_Pattern)}
 		
@@ -550,6 +558,25 @@ class MKVMerge {
 ##################################### Functions ####################################
 ####################################################################################
 
+function Test-Debug {
+	[CmdletBinding()]
+	param (
+		[Parameter(Mandatory = $false)]
+		[switch]$IgnorePSBoundParameters
+	,
+		[Parameter(Mandatory = $false)]
+		[switch]$IgnoreDebugPreference
+	,
+		[Parameter(Mandatory = $false)]
+		[switch]$IgnorePSDebugContext
+	)
+	process {
+		((-not $IgnoreDebugPreference.IsPresent) -and ($DebugPreference -ne "SilentlyContinue")) -or
+				((-not $IgnorePSBoundParameters.IsPresent) -and $PSBoundParameters.Debug.IsPresent) -or
+				((-not $IgnorePSDebugContext.IsPresent) -and ($PSDebugContext))
+	}
+}
+
 function Compress-ToM4A
 {
 	param
@@ -698,9 +725,7 @@ $files = dir $in | where {$_.Extension -eq ".$extension"}
 						$medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
 						$medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
 						$audiotrack.Format = $medinfoAud.Audiotracks[0].Format
-                                                $medinfoAud.Close()
-                        
-
+						$medinfoAud.Close()
 					}
 		"Decoder"   {
 						Foreach ($audiotrack in $medinfo.Audiotracks) {
@@ -714,10 +739,9 @@ $files = dir $in | where {$_.Extension -eq ".$extension"}
 								$medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
 								$medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
 								$audiotrack.Format = $medinfoAud.Audiotracks[0].Format
-                                                                $medinfoAud.Close()
+								$medinfoAud.Close()
 							}
 						}
-
 					}
 		default	{throw "Unknown Recompress Method."}
 	}
@@ -726,15 +750,15 @@ $files = dir $in | where {$_.Extension -eq ".$extension"}
 #  Extracting timecode
 	Foreach ($videotrack in $medinfo.Videotracks) {
 	        "Extracting timecodes..."
-		Write-Debug "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
+		    Write-Debug "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
 	        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
 	}
 
 #  Extracting Chapters
 	if ($Copy_Chapters -and $medinfo.Chapters){
 	        "Extracting chapters..."
-		Write-Debug "mkvextract Command Line: $mkvextract_path chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
-		Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
+            Write-Debug "mkvextract Command Line: $mkvextract_path chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
+		    Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
 	}
 
 #  Encoding
@@ -847,7 +871,7 @@ $files = dir $in | where {$_.Extension -eq ".$extension"}
 	Write-Debug "Run Command Cli: $res"
 
 # Removing Temp Files
-	if (-not $debug) {
+	if (-not $(Test-Debug)) {
     	Remove-Item $enctemp\*
 		if ($del_original -and $(Test-Path -LiteralPath $out\$($file.basename).mkv) -and $($errorcount -eq 0)){Remove-Item -LiteralPath $file.fullname}
 	}
@@ -855,16 +879,14 @@ $files = dir $in | where {$_.Extension -eq ".$extension"}
 
 # Last Task
 if ($(Test-Path -LiteralPath $(Join-Path $in "shutdown"))){Remove-Item $(Join-Path $in "shutdown");$shutdown=$true}
-if ($debug) {
-	""
-	"Debug Mode Enabled: $debug"
-	"Delete Original: $del_original"
-	"Result File: $out\$($file.basename).mkv"
-	"Result File Found: $(Test-Path -LiteralPath $out\$($file.basename).mkv)"
-	"Errors Count: $errorcount"
-	""
-	"Shutdown mode enabled: $shutdown"
-	"Press any key to Continue"
-	$host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | OUT-NULL
-}
+Write-Debug ""
+Write-Debug "Debug Mode Enabled: $true"
+Write-Debug "Delete Original: $del_original"
+Write-Debug "Result File: $out\$($file.basename).mkv"
+Write-Debug "Result File Found: $(Test-Path -LiteralPath $out\$($file.basename).mkv)"
+Write-Debug "Errors Count: $errorcount"
+Write-Debug ""
+Write-Debug "Shutdown mode enabled: $shutdown"
+Write-Debug "Press any key to Continue"
+if (Test-Debug) {$host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | OUT-NULL}
 if ($shutdown){shutdown -t 60 -f -s}

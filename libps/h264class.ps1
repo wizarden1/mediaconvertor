@@ -106,7 +106,7 @@ class H264 {
 # Creating Filter
 # --video-filter <filter>:<option>=<value>,<option>=<value>/<filter>:<option>=<value>
 		$filters = @()
-		if ($this.Crop.Enabled) {$filters += "$($this.Crop.Left),$($this.Crop.Top),$($this.Crop.Right),$($this.Crop.Bottom)"}
+		if ($this.Crop.Enabled) {$filters += "$(crop:$this.Crop.Left),$($this.Crop.Top),$($this.Crop.Right),$($this.Crop.Bottom)"}
 		if ($this.Resize.Enabled) {$filters += "resize:width=$($this.Resize.Width),height=$($this.Resize.Height),method=$($this.Resize.Method)"}
 #		if ($this.Pulldown) {$filters += "select_every:"+$($this.Pulldown_Pattern)}
 		
