@@ -20,7 +20,7 @@ $preset="veryslow"		#ultrafast,superfast,veryfast,faster,fast,medium,slow,slower
 
 
 #Filters
-$crop=@($false,0,0,0,0) #crop:enabled,left,top,right,bottom
+$crop=@($true,40,0,40,0) #crop:enabled,left,top,right,bottom
 #$resize=@($true,1280,720,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,960,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 $resize=@($false,0,0,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
@@ -36,7 +36,6 @@ $shutdown=$false
 $extension="MKV"
 
 #General Paths
-$multimedia = Join-Path $(Get-Location).Drive.Root "Multimedia\Programs"
 $root_path = $(Get-Location).Path
 $tools_path = Join-Path $root_path "tools"
 $enctemp = Join-Path $root_path "temp"
@@ -677,7 +676,8 @@ function Expand-TracksfromMKV
 Remove-Item $enctemp\*
 
 $files = dir $in | where {$_.Extension -eq ".$extension"}
-#if ($files -is $null){exit}
+Write-Output "Files will be converted:"
+if ($files -eq $null){Write-Output "No files to convert"} else {$files | ForEach-Object {Write-Output $_.BaseName}}
 :Main Foreach ($file in $files) {
 	$errorcount=0
 	if (-not $(Test-Path -LiteralPath $file.FullName)){continue Main}
@@ -889,4 +889,5 @@ Write-Debug ""
 Write-Debug "Shutdown mode enabled: $shutdown"
 Write-Debug "Press any key to Continue"
 if (Test-Debug) {$host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | OUT-NULL}
+Write-Output "Process completed"
 if ($shutdown){shutdown -t 60 -f -s}
