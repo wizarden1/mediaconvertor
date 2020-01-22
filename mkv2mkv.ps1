@@ -20,7 +20,7 @@ $preset="veryslow"		#ultrafast,superfast,veryfast,faster,fast,medium,slow,slower
 
 
 #Filters
-$crop=@($true,40,0,40,0) #crop:enabled,left,top,right,bottom
+$crop=@($false,40,0,40,0) #crop:enabled,left,top,right,bottom
 #$resize=@($true,1280,720,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,960,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 $resize=@($false,0,0,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
@@ -675,9 +675,9 @@ function Expand-TracksfromMKV
 # Clean Temp
 Remove-Item $enctemp\*
 
-$files = dir $in | where {$_.Extension -eq ".$extension"}
+$files = Get-ChildItem $in | Where-Object {$_.Extension -eq ".$extension"}
 Write-Output "Files will be converted:"
-if ($files -eq $null){Write-Output "No files to convert"} else {$files | ForEach-Object {Write-Output $_.BaseName}}
+if ($null -eq $files){Write-Output "No files to convert"} else {$files | ForEach-Object {Write-Output $_.BaseName}}
 :Main Foreach ($file in $files) {
 	$errorcount=0
 	if (-not $(Test-Path -LiteralPath $file.FullName)){continue Main}

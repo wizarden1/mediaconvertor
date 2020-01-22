@@ -1,6 +1,5 @@
-#Version 2.5
-# terminate - stop process after current file
-# shutdown - shutdown when it finished
+#Requires -Version 5
+#Version 3.0
 
 #Config
 
@@ -14,338 +13,897 @@ $RecompressMethod="Decoder"     #"AviSynth"|"Decoder"
 #Video
 $video_languages= @($false,"jpn","jpn") #@("Use manual set","track ID/default","track ID",...)
 $tune="animation" #tune:film,animation,grain,psnr,ssim,fastdecode,touhou
-$DecompressSource="FFVideoSource"	#"FFVideoSource"|"DirectShowSource"
+$DecompressSource="Direct"	#"FFVideoSource"|"DirectShowSource"|"Direct"
 $Copy_Chapters=$true
+$quantanizer=22
+$preset="veryslow"		#ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
+
 
 #Filters
-$crop=@($false,20,20,20,20) #crop:enabled,left,top,right,bottom
-$resize=@($true,1280,720,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
+$crop=@($false,40,0,40,0) #crop:enabled,left,top,right,bottom
+#$resize=@($true,1280,720,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,960,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
-#$resize=@($false,0,0,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
+$resize=@($false,0,0,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1024,768,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,544,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
-$pulldown=@($false,"")	#pulldown:enabled,"step,offset1[,...]"
+#$pulldown=@($false,"")	#pulldown:enabled,"step,offset1[,...]"
 
 #Advanced Config
 $del_original=$true
-$root_path = "C:\Multimedia\Programs\Utils"
-$enctemp = Join-Path $root_path "temp"
-$out = $(Join-Path $root_path "out")
-$in = $(Join-Path $root_path "in")
-$debug=$false
+#$debug=$false
+#$DebugPreference="Continue"  #Enable Debug mode
 $shutdown=$false
 $extension="MKV"
 
-$multimedia = "C:\Multimedia\Programs"
-$meguitools = Join-Path $multimedia "MeGUI\tools"
-$neroAacEnc_path = Join-Path $multimedia "NeroAAC\neroAacEnc.exe"
-$x264_path = Join-Path $meguitools "x265\x265.exe"
-$mkvmerge_path = Join-Path $meguitools "mkvmerge\mkvmerge.exe"
-$mkvextract_path = Join-Path $meguitools "mkvmerge\mkvextract.exe"
-#$mkvextract_path = "C:\Multimedia\Programs\Utils\mkvtoolnix\mkvextract.exe"
-$MediaInfoWrapper_path = Join-Path $root_path "MediaInfoWrapper.dll"
-$oggdec_path = Join-Path $root_path "oggdec.exe"
-$eac3to = Join-Path $meguitools "eac3to\eac3to.exe"
-$faad_path = Join-Path $root_path "faad.exe"
-$wavi = Join-Path $root_path "Wavi.exe"
+#General Paths
+$root_path = $(Get-Location).Path
+$tools_path = Join-Path $root_path "tools"
+$enctemp = Join-Path $root_path "temp"
+$out = Join-Path $root_path "out"
+$in = Join-Path $root_path "in"
 
-#Advanced Video
-$quantanizer=22   #18
-$preset="veryslow"
+#Prepare base folders
+if (-not $(Test-Path -LiteralPath $in)){New-Item -Path $root_path -Name "in" -ItemType "directory"}
+if (-not $(Test-Path -LiteralPath $out)){New-Item -Path $root_path -Name "out" -ItemType "directory"}
+if (-not $(Test-Path -LiteralPath $enctemp)){New-Item -Path $root_path -Name "temp" -ItemType "directory"}
+
+#Tools
+$neroAacEnc_path = Join-Path $tools_path "neroAacEnc.exe"
+$MediaInfoWrapper_path = Join-Path $tools_path "MediaInfoWrapper.dll"
+$x265_path = Join-Path $tools_path "x265\x265-64bit-10b-3.2+34[VS2019].exe"
+$mkvmerge_path = Join-Path $tools_path "mkvtoolnix\mkvmerge.exe"
+$mkvextract_path = Join-Path $tools_path "mkvtoolnix\mkvextract.exe"
+$oggdec_path = Join-Path $tools_path "oggdec.exe"
+$eac3to = Join-Path $tools_path "eac3to\eac3to.exe"
+$faad_path = Join-Path $tools_path "faad.exe"
+$wavi = Join-Path $tools_path "Wavi.exe"
+$avs2yuv_path = Join-Path $tools_path "avs2yuv\avs2yuv64.exe"
+$ffmpeg_path = Join-Path $tools_path "ffmpeg_64.exe"
+
+Write-Debug "Debug Mode Enabled"
+
+#Check Prerequisite
+"Checking Prerequisite..."
+Write-Debug "Checking $neroAacEnc_path"
+if (-not $(Test-Path -LiteralPath $neroAacEnc_path)){Write-Host "$neroAacEnc_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $MediaInfoWrapper_path"
+if (-not $(Test-Path -LiteralPath $MediaInfoWrapper_path)){Write-Host "$MediaInfoWrapper_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $x265_path"
+if (-not $(Test-Path -LiteralPath $x265_path)){Write-Host "$x265_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $mkvmerge_path"
+if (-not $(Test-Path -LiteralPath $mkvmerge_path)){Write-Host "$mkvmerge_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $mkvextract_path"
+if (-not $(Test-Path -LiteralPath $mkvextract_path)){Write-Host "$mkvextract_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $oggdec_path"
+if (-not $(Test-Path -LiteralPath $oggdec_path)){Write-Host "$oggdec_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $eac3to"
+if (-not $(Test-Path -LiteralPath $eac3to)){Write-Host "$eac3to not found" -ForegroundColor Red;break}
+Write-Debug "Checking $faad_path"
+if (-not $(Test-Path -LiteralPath $faad_path)){Write-Host "$faad_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $wavi"
+if (-not $(Test-Path -LiteralPath $wavi)){Write-Host "$wavi not found" -ForegroundColor Red;break}
+Write-Debug "Checking $avs2yuv_path"
+if (-not $(Test-Path -LiteralPath $avs2yuv_path)){Write-Host "$avs2yuv_path not found" -ForegroundColor Red;break}
+Write-Debug "Checking $ffmpeg_path"
+if (-not $(Test-Path -LiteralPath $ffmpeg_path)){Write-Host "$ffmpeg_path not found" -ForegroundColor Red;break}
+
+####################################################################################
+###################################### Classes #####################################
+####################################################################################
+enum Presets {
+    ultrafast
+    superfast
+    veryfast
+    faster
+    fast
+    medium
+    slow
+    slower
+    veryslow
+    placebo
+}
+
+enum tune { 
+    none
+    psnr
+    ssim
+    grain
+    fastdecode
+    zerolatency
+    animation
+}
+
+enum ResizeMethods {
+    fast_bilinear
+    bilinear
+    bicubic
+    experimental
+    neighbor
+    area
+    bicublin
+    gauss
+    sinc
+    lanczos
+    spline
+}
+
+class TCrop {
+    [bool]$Enabled = $false;
+    [int]$Left = 0;
+    [int]$Top = 0;
+    [int]$Right = 0;
+    [int]$Bottom = 0;
+    [string]$arg;
+
+    # Metods
+    [void]BuildArgs() {
+        if ($this.Enabled) {
+          $this.arg = "-filter:v ""crop=w=in_w-$($this.Left)-$($this.Right):h=in_h-$($this.Top)-$($this.Bottom):x=$($this.Left):y=$($this.Top)"""
+        } else {$this.arg = ""}
+    }
+}
+
+class TResize {
+    [bool]$Enabled = $false;
+    [int]$Width = 0;
+    [int]$Height = 0;
+    # resize methods: fastbilinear, bilinear, bicubic, experimental, point, area, bicublin, gauss, sinc, lanczos, spline
+    [ResizeMethods]$Method = [ResizeMethods]::lanczos;
+
+    [string]$arg;
+
+    # Metods
+    [void]BuildArgs() {
+        if ($this.Enabled) {
+          $this.arg = "-vf scale=$($this.Width):$($this.Height) -sws_flags $($this.Method)"
+        } else {$this.arg = ""}
+    }
+}
+
+class TH265 {
+    # Properties
+    hidden [String]$x265_path;
+    hidden [String]$ffmpeg_path;
+
+    [Presets]$Preset = [Presets]::medium;
+    [tune]$Tune = [tune]::none;
+
+    [String]$Arguments;
+
+    [int16]$Quantanizer = 22;
+    [string]$fps; #"23.976" "24000/1001"
+    [string]$Resolution; #"1920x1080"
+    [ValidateSet('8','10','12')]
+    [string]$Bitdepth = '8'; #8,10,12
+
+    [io.fileinfo]$SourceFileAVS;
+
+    [ValidateSet('.hvec')]
+    hidden [String]$DestinationFileExtension = ".hvec";
+    [io.fileinfo]$DestinationFileName;
+
+    #Filters
+    [TCrop]$Crop = [TCrop]::new();
+    [TResize]$Resize = [TResize]::new();
+
+    [System.Diagnostics.ProcessPriorityClass]$ProcessPriority = [System.Diagnostics.ProcessPriorityClass]::Idle;
+
+    # Constructor
+    H265 ([String]$x265_path, $ffmpeg_path) {
+        if (Test-Path $x265_path -PathType Leaf) { $this.x265_path = $x265_path } else { throw "ERROR: x265.exe not found." }
+        if (Test-Path $ffmpeg_path -PathType Leaf) { $this.ffmpeg_path = $ffmpeg_path } else { throw "ERROR: ffmpeg.exe not found." }
+    }
+
+    [void]Compress() {
+        # Check required parameters
+        if (-not $(Resolve-Path ([io.fileinfo]$this.DestinationFileName).DirectoryName | Test-Path)) { throw "ERROR: Destination path is incorrect."; return }
+        if (([io.fileinfo]$this.DestinationFileName).Extension -eq ".hvec") { $this.DestinationFileExtension = ".hvec" } else { $this.DestinationFileExtension = "$(([io.fileinfo]$this.DestinationFileName).Extension).hvec" }
+        if (-not $this.fps) {throw "ERROR: Input FPS not set."; return}
+        if (-not $this.Resolution) {throw "ERROR: Input resolution is not set."; return}
+        
+        $DestinationFile = "$(Join-Path ([io.fileinfo]$this.DestinationFileName).DirectoryName ([io.fileinfo]$this.DestinationFileName).BaseName)$($this.DestinationFileExtension)"
+		
+        if ($this.Tune -ne "none") { $TuneCommand = "--tune $($this.Tune)" } else { $TuneCommand = "" }
+        # Creating Filter
+        $filters = @()
+        $filters += $this.Crop.arg;
+        $filters += $this.Resize.arg;
+        $videofilter = ""
+        if ($filters.Length -gt 0) { $videofilter = [string]::Join(" ", $filters) }
+
+        # Encoding
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.Arguments = "/c ""$($this.ffmpeg_path) -i $($this.SourceFileAVS.FullName) -f rawvideo - | $($this.x265_path) - $videofilter --input-res $($this.Resolution) --fps $($this.fps) --input-depth $($this.cdepth) --output '$DestinationFile' --crf $($this.Quantanizer) --preset $($this.Preset) $TuneCommand"""
+        $startInfo.FileName = "cmd.exe"
+        $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
+        $startInfo.UseShellExecute = $false
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        $process.Start() | Out-Null
+        $process.PriorityClass = $this.ProcessPriority
+        $process.WaitForExit()
+
+        if ($(Get-ChildItem $DestinationFile).Length -eq 0) { throw "File $($this.SourceFileAVS.Name) hasn't been compressed." }
+    }
+}
 
 
+class MediaInfoAudioTrack {
+    [string]$ID;
+    [string]$StreamOrder;
+    [string]$UniqueID;
+    [string]$ExtractID;
+    [string]$Format;
+    [string]$Title;
+    [string]$StreamKindID;
+    [string]$Language;
+    [string]$CodecID;
+    [string]$Channels;
+    [string]$SamplingRate;
+    [string]$Custom01 = "";
+    [string]$Custom02 = "";
+    [string]$Custom03 = "";
+    [string]$GUID;
 
-# Program Body
-################################################
-function Convert-Audio
+    MediaInfoAudioTrack () {
+        $this.GUID = [guid]::NewGuid().tostring()
+    }
+}
+
+class MediaInfoVideoTrack {
+    [string]$ID;
+    [string]$StreamOrder;
+    [string]$UniqueID;
+    [string]$ExtractID;
+    [string]$Title;
+    [string]$Format;
+    [string]$StreamKindID;
+    [string]$Language;
+    [string]$CodecID;
+    [int16]$Width;
+    [int16]$Height;
+    [int16]$BitDepth;
+    [string]$DisplayAspectRatio;
+    [string]$Custom01 = "";
+    [string]$Custom02 = "";
+    [string]$Custom03 = "";
+    [string]$GUID;
+
+    MediaInfoVideoTrack () {
+        $this.GUID = [guid]::NewGuid().tostring()
+    }
+}
+
+class MediaInfoTextTrack {
+    [string]$ID;
+    [string]$StreamOrder;
+    [string]$UniqueID;
+    [string]$ExtractID;
+    [string]$Title;
+    [string]$Format;
+    [string]$StreamKindID;
+    [string]$Language;
+    [string]$CodecID;
+    [string]$Custom01 = "";
+    [string]$Custom02 = "";
+    [string]$Custom03 = "";
+    [string]$GUID;
+
+    MediaInfoTextTrack () {
+        $this.GUID = [guid]::NewGuid().tostring()
+    }
+}
+
+class MediaInfo {
+    hidden [string]$MediaInfoWrapper_path;
+    hidden [string]$MediaFile;
+    hidden [PSObject]$medinfo;
+
+# Properties
+    [string]$FullName;
+    [string]$DirectoryName;
+    [string]$BaseName;
+    [string]$Extension;
+    [MediaInfoAudioTrack[]]$Audiotracks;
+    [MediaInfoVideoTrack[]]$Videotracks;
+    [MediaInfoTextTrack[]]$Texttracks;
+	[bool]$Chapters = $false;
+
+
+# Constructor
+	MediaInfo ([String]$MediaInfoWrapper_path) {
+        if (Test-Path $MediaInfoWrapper_path -PathType Leaf){$this.MediaInfoWrapper_path = $MediaInfoWrapper_path} else {throw "ERROR: Can not access library MediaInfoWrapper."}
+		add-Type -Path $MediaInfoWrapper_path
+	}
+
+# Methods
+    [void] Open () {
+        $this.Close()
+
+        if ($this.medinfo) {$this.medinfo = $null}
+        if (Test-Path $this.MediaFile -PathType Leaf){} else {throw "ERROR: Media file doesn't exists."}
+
+        $this.medinfo = new-object MediaInfoWrapper.MediaInfo($this.MediaFile)
+## General
+        $this.FullName = $this.medinfo.General[0].CompleteName;
+        $this.DirectoryName = $this.medinfo.General[0].FolderName;
+        $this.BaseName = $this.medinfo.General[0].FileName;
+        $this.Extension = $this.medinfo.General[0].FileExtension.ToUpper();
+
+## Audio
+		Foreach ($audtrack in $this.medinfo.Audio) {
+    		$audiotrack = [MediaInfoAudioTrack]::new()
+            $audiotrack.ID = $audtrack.ID;
+            $audiotrack.StreamOrder = $audtrack.StreamOrder;
+    		$audiotrack.UniqueID = $audtrack.UniqueID;
+    		$audiotrack.Format = $audtrack.Format;
+			$audiotrack.Title = $audtrack.Title;
+			$audiotrack.StreamKindID = $audtrack.StreamKindID;
+			$audiotrack.Language = $audtrack.LanguageString3;
+			$audiotrack.CodecID = $audtrack.CodecID;
+			$audiotrack.Channels = $audtrack.ChannelsString;
+			$audiotrack.SamplingRate = $audtrack.SamplingRate;
+			$this.Audiotracks += $audiotrack
+		}
+
+## Video
+		Foreach ($vidtrack in $this.medinfo.Video) {
+			$videotrack = [MediaInfoVideoTrack]::new()
+			$videotrack.ID = $vidtrack.ID;
+			$videotrack.StreamOrder = $vidtrack.StreamOrder;
+			$videotrack.UniqueID = $vidtrack.UniqueID;
+			$videotrack.Title = $vidtrack.Title;
+			$videotrack.Format = $vidtrack.Format;
+			$videotrack.Language = $vidtrack.LanguageString3;
+			$videotrack.StreamKindID = $vidtrack.StreamKindID;
+			$videotrack.Width = $vidtrack.Width;
+			$videotrack.Height = $vidtrack.Height;
+                        $videotrack.BitDepth = $vidtrack.BitDepth;
+			$videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
+			$videotrack.CodecID = $vidtrack.CodecID;
+			$this.Videotracks += $videotrack
+		}
+
+## Text
+		Foreach ($txttrack in $this.medinfo.Text) {
+			$texttrack = [MediaInfoTextTrack]::new()
+			$texttrack.ID = $txttrack.ID;
+			$texttrack.StreamOrder = $txttrack.StreamOrder;
+			$texttrack.UniqueID = $txttrack.UniqueID;
+			$texttrack.Title = $txttrack.Title;
+			$texttrack.Format = $txttrack.Format;
+			$texttrack.Language = $txttrack.LanguageString3;
+			$texttrack.StreamKindID = $txttrack.StreamKindID;
+			$texttrack.CodecID = $txttrack.CodecID;
+			$this.Texttracks += $texttrack
+		}
+
+## Chapters
+    	$this.Chapters = ($this.medinfo.MenuCount -gt 0)
+
+    }
+
+    [void] Open ([string]$MediaFile) {
+        $this.Close()
+
+        if (Test-Path $MediaFile -PathType Leaf){$this.MediaFile = $MediaFile} else {throw "ERROR: Media file doesn't exists."}
+        $this.medinfo = new-object MediaInfoWrapper.MediaInfo($MediaFile)
+## General
+        $this.FullName = $this.medinfo.General[0].CompleteName;
+        $this.DirectoryName = $this.medinfo.General[0].FolderName;
+        $this.BaseName = $this.medinfo.General[0].FileName;
+        $this.Extension = $this.medinfo.General[0].FileExtension.ToUpper();
+
+## Audio
+		Foreach ($audtrack in $this.medinfo.Audio) {
+    		$audiotrack = [MediaInfoAudioTrack]::new()
+            $audiotrack.ID = $audtrack.ID;
+            $audiotrack.StreamOrder = $audtrack.StreamOrder;
+    		$audiotrack.UniqueID = $audtrack.UniqueID;
+    		$audiotrack.Format = $audtrack.Format;
+			$audiotrack.Title = $audtrack.Title;
+			$audiotrack.StreamKindID = $audtrack.StreamKindID;
+			$audiotrack.Language = $audtrack.LanguageString3;
+			$audiotrack.CodecID = $audtrack.CodecID;
+			$audiotrack.Channels = $audtrack.ChannelsString;
+			$audiotrack.SamplingRate = $audtrack.SamplingRate;
+			$this.Audiotracks += $audiotrack
+		}
+
+## Video
+		Foreach ($vidtrack in $this.medinfo.Video) {
+			$videotrack = [MediaInfoVideoTrack]::new()
+			$videotrack.ID = $vidtrack.ID;
+			$videotrack.StreamOrder = $vidtrack.StreamOrder;
+			$videotrack.UniqueID = $vidtrack.UniqueID;
+			$videotrack.Title = $vidtrack.Title;
+			$videotrack.Format = $vidtrack.Format;
+			$videotrack.Language = $vidtrack.LanguageString3;
+			$videotrack.StreamKindID = $vidtrack.StreamKindID;
+			$videotrack.Width = $vidtrack.Width;
+			$videotrack.Height = $vidtrack.Height;
+                        $videotrack.BitDepth = $vidtrack.BitDepth;
+			$videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
+			$videotrack.CodecID = $vidtrack.CodecID;
+			$this.Videotracks += $videotrack
+		}
+
+## Text
+		Foreach ($txttrack in $this.medinfo.Text) {
+			$texttrack = [MediaInfoTextTrack]::new()
+			$texttrack.ID = $txttrack.ID;
+			$texttrack.StreamOrder = $txttrack.StreamOrder;
+			$texttrack.UniqueID = $txttrack.UniqueID;
+			$texttrack.Title = $txttrack.Title;
+			$texttrack.Format = $txttrack.Format;
+			$texttrack.Language = $txttrack.LanguageString3;
+			$texttrack.StreamKindID = $txttrack.StreamKindID;
+			$texttrack.CodecID = $txttrack.CodecID;
+			$this.Texttracks += $texttrack
+		}
+
+## Chapters
+    	$this.Chapters = ($this.medinfo.MenuCount -gt 0)
+
+    }
+
+    [void] Close () {
+        $this.medinfo = $null;
+        $this.FullName = "";
+        $this.DirectoryName = "";
+        $this.BaseName = "";
+        $this.Extension = "";
+        $this.Videotracks = $null;
+        $this.Audiotracks = $null;
+        $this.Chapters = $false;
+    }
+
+}
+
+
+class TVideoTrack {
+    hidden [string]$videotrack_cli = "";
+
+    [string]$Format;
+    [string]$FileName;
+    [string]$Title;
+    [string]$Language;
+    [string]$Width;
+    [string]$Height;
+    [string]$BitDepth;
+    [string]$TimeCodeFile;
+
+    [string] MakeCommand () {
+        $this.videotrack_cli = "";
+#	    $this.videotrack_cli += " --default-track 0";
+	    if ($this.TimeCodeFile) {
+            if (Test-Path $this.TimeCodeFile -PathType Leaf) {$this.videotrack_cli += " --timecodes 0:""$($this.TimeCodeFile)"""} else {throw "ERROR: Timecode file $($this.TimeCodeFile) can't be accessed."}
+        }
+		if ($this.Language) {$this.videotrack_cli += " --language 0:""$($this.Language)"""};
+#		$this.videotrack_cli += " --video-tracks 0";
+#		$this.videotrack_cli += " --compression 0:none";
+#		$this.videotrack_cli += " --no-audio --no-global-tags --no-chapters";
+		if ($this.Title) {$this.videotrack_cli += " --track-name 0:""$($this.Title)"""};
+		if (Test-Path -LiteralPath $this.FileName -PathType Leaf) {$this.videotrack_cli += " ""$($this.FileName)"""} else {throw "ERROR: Video File $($this.FileName) doesn't accessible."}
+        return $this.videotrack_cli;
+    }
+}
+
+class TAudioTrack {
+    hidden [string]$audiotrack_cli = "";
+
+    [string]$Format;
+    [string]$FileName;
+    [string]$Title;
+    [string]$Language;
+
+    [string] MakeCommand () {
+ 	    $this.audiotrack_cli = "";
+#		$this.audiotrack_cli += " --default-track 0";
+		if ($this.Language) {$this.audiotrack_cli += " --language 0:""$($this.Language)"""};
+#		$this.audiotrack_cli += " --audio-tracks 0"
+#		$this.audiotrack_cli += " --compression 0:none"
+		$this.audiotrack_cli += " --no-video --no-global-tags --no-chapters"
+		$this.audiotrack_cli += " --track-name 0:""$($this.Title)"""
+		if (Test-Path -LiteralPath $this.FileName -PathType Leaf) {$this.audiotrack_cli += " ""$($this.FileName)"""} else {throw "ERROR: Audio File $($this.FileName) doesn't accessible."}
+        return $this.audiotrack_cli;
+    }
+}
+
+class TSubtitleTrack {
+    hidden [string]$subtitle_cli = "";
+
+    [string]$Format;
+    [string]$FileName;
+    [string]$Title;
+    [string]$Language;
+
+    [string] MakeCommand () {
+        $this.subtitle_cli = "";
+#		$this.subtitle_cli += " --default-track 0";
+		if ($this.Language) {$this.subtitle_cli += " --language 0:""$($this.Language)"""};
+#		$this.subtitle_cli += " --subtitle-tracks 0";
+#		$this.subtitle_cli += " --no-video --no-audio --no-track-tags --no-global-tags --no-chapters"
+		$this.subtitle_cli += " --track-name 0:""$($this.Title)"""
+		if (Test-Path -LiteralPath $this.FileName -PathType Leaf) {$this.subtitle_cli += " ""$($this.FileName)"""} else {throw "ERROR: Subtitle File $($this.FileName) doesn't accessible."}
+        return $this.subtitle_cli;
+    }
+}
+
+class MKVMerge {
+    hidden [string]$MKVMerge_path;
+
+    [string]$DestinationFile;
+
+    [TVideoTrack[]]$VideoTracks;
+    [TAudioTrack[]]$AudioTracks;
+    [TSubtitleTrack[]]$SubtitleTracks;
+    [string]$ChaptersFile;
+
+# Constructor
+	MKVMerge ([String]$MKVMerge_path) {
+        if (Test-Path $MKVMerge_path -PathType Leaf){$this.MKVMerge_path = $MKVMerge_path} else {throw "ERROR: Can not access executable mkvmerge.exe."}
+	}
+
+    [string] MakeFile () {
+        $chapters_cli = "";
+	    if ($this.ChaptersFile) {
+            if (Test-Path -LiteralPath $this.ChaptersFile -PathType Leaf) {$chapters_cli = " --chapters ""$($this.ChaptersFile)"""} else {throw "ERROR: Chapters XML file $($this.ChaptersFile) can't be accessed."}
+        }
+        $videotrack_cli = "";
+        if ($this.VideoTracks) {$this.VideoTracks | ForEach-Object {$videotrack_cli += $_.MakeCommand()}}
+
+        $audiotrack_cli = "";
+        if ($this.AudioTracks) {$this.AudioTracks | ForEach-Object {$audiotrack_cli += $_.MakeCommand()}}
+
+        $subtitle_cli = "";
+        if ($this.SubtitleTracks) {$this.SubtitleTracks | ForEach-Object {$subtitle_cli += $_.MakeCommand()}}
+
+        Start-Process -Wait -NoNewWindow -FilePath $this.MKVMerge_path -ArgumentList "--output ""$($this.DestinationFile)"" $videotrack_cli $audiotrack_cli $chapters_cli $subtitle_cli"
+        return "$($this.MKVMerge_path) --output ""$($this.DestinationFile)"" $videotrack_cli $audiotrack_cli $chapters_cli $subtitle_cli";
+    }
+
+
+}
+
+####################################################################################
+##################################### Functions ####################################
+####################################################################################
+
+function Test-Debug {
+	[CmdletBinding()]
+	param (
+		[Parameter(Mandatory = $false)]
+		[switch]$IgnorePSBoundParameters
+	,
+		[Parameter(Mandatory = $false)]
+		[switch]$IgnoreDebugPreference
+	,
+		[Parameter(Mandatory = $false)]
+		[switch]$IgnorePSDebugContext
+	)
+	process {
+		((-not $IgnoreDebugPreference.IsPresent) -and ($DebugPreference -ne "SilentlyContinue")) -or
+				((-not $IgnorePSBoundParameters.IsPresent) -and $PSBoundParameters.Debug.IsPresent) -or
+				((-not $IgnorePSDebugContext.IsPresent) -and ($PSDebugContext))
+	}
+}
+
+function Compress-ToM4A
 {
 	param
 	(
-		[Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
+		[Parameter(Mandatory = $true, Position = 0)]
 		[System.IO.FileInfo]
 		[ValidateScript( { ( Test-Path $_ ) } ) ]
 		$SourceFile,
 		
-		[System.IO.DirectoryInfo]
-		[ValidateScript( { ( Test-Path $_ ) } ) ]
-		$OutputDir = $SourceFile.Directory
+		[String]
+		$DestinationFileName="$($SourceFile.FullName).m4a"
 	)
 	begin
-	{ 
+	{
+# Check
+		if (-not $(Test-Path $eac3to)) {throw "eac3to.exe not found.";return $false}
 	}
 	
 	process 
 	{
+		if (-not $(Resolve-Path ([io.fileinfo]$DestinationFileName).DirectoryName | Test-Path)) {return $false}
+                if (([io.fileinfo]$DestinationFileName).Extension -eq ".m4a"){$DestinationFileExtension = ".m4a"} else {$DestinationFileExtension = "$(([io.fileinfo]$DestinationFileName).Extension).m4a"}
+		$DestinationFile = "$(Join-Path ([io.fileinfo]$DestinationFileName).DirectoryName ([io.fileinfo]$DestinationFileName).BaseName)$DestinationFileExtension"
+
 		Switch ($SourceFile.Extension)
 		{
-			".AAC"    {Start-Process -Wait -NoNewWindow -FilePath $faad_path -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"""
-						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
-					}
-			".PCM"    {Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"""}
-			".Vorbis" {Start-Process -Wait -NoNewWindow -FilePath $oggdec_path -ArgumentList "--wavout ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" ""$($SourceFile.FullName)"""
-						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
-					}
-			".FLAC"   {Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"""}
-			".AC-3"   {Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"""}
-			".DTS"    {Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"""}
-			".MPEG Audio" {Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"""}
-			".TrueHD"     {Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"""}
-			default	{throw "Unknown Audio Codec."}
+			".AAC"    	{Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile"""}
+#						Start-Process -Wait -NoNewWindow -FilePath $faad_path -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"""
+#						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
+			".PCM"    	{Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile"""}
+#			".Vorbis" 	{
+#						Start-Process -Wait -NoNewWindow -FilePath $oggdec_path -ArgumentList "--wavout ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" ""$($SourceFile.FullName)"""
+#						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
+#					}
+			".FLAC"   	{Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile"""}
+			".AC-3"   	{Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile"""}
+			".DTS"    	{Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile"""}
+			".MPEG Audio" 	{Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile"""}
+			".TrueHD"     	{Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile"""}
+			default	{throw "Unknown Audio Codec.";return $false}
 		}
-		if (-not $(Test-Path -LiteralPath "$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a" )) {throw "File $($SourceFile.Name) hasn't been decompressed."}
+		if (-not $(Test-Path -LiteralPath $DestinationFile )) {throw "File $($SourceFile.Name) hasn't been recompressed.";return $false}
 	}
 	end
-	{ }
+	{
+		return $true
+	}
 
 }
 
-################################################
-function Compress-Video
+# Not Finished
+function Expand-TracksfromMKV
 {
 	param
 	(
 		[Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
-		[System.IO.FileInfo]
-		[ValidateScript( { ( Test-Path $_ ) } ) ]
-		$SourceFile,
-		
+		[ValidateScript( { ( $_ -ne $nul) } ) ]
+		$mediainfo,
+
 		[System.IO.DirectoryInfo]
 		[ValidateScript( { ( Test-Path $_ ) } ) ]
-		$OutputDir = $SourceFile.Directory,
+		$OutputDir = $mediainfo.DirectoryName
 
-		[Int16]
-		$quantanizer = 22,
-		
-		[string]
-		[ValidateSet('ultrafast','superfast','veryfast','faster','fast','medium','slow','slower','veryslow','placebo')]
-        $preset="medium",
-		
-		[string]
-		[ValidateSet('film','animation','grain','stillimage','psnr','ssim','fastdecode','zerolatency')]
-		$tune="film",
-		
-		$crop=@($false,20,20,20,20),
-		$resize=@($false,1280,720,"lanczos",""),
-		$pulldown=@($false,"")
 	)
 	begin
 	{ 
-	# Creating Filter
-	# --video-filter <filter>:<option>=<value>,<option>=<value>/<filter>:<option>=<value>
-		$filters = @()
-		if ($crop[0]) {$filters += [string]::Join(",",$crop[1..4])}
-		if ($resize[0]) {$filters += "resize:width=$($resize[1]),height=$($resize[2]),method=$($resize[3])$($resize[4])"}
-		if ($pulldown[0]) {$filters += "select_every:"+$pulldown[1]}
-		$videofilter=""
-		if ($filters.Length -gt 0) {$videofilter="--video-filter "+[string]::Join("/",$filters)}
+		if (-not $(Test-Path $mkvextract_path)) {throw "mkvextract.exe not found.";return}
 	}
-	
 	process 
 	{
-		$startInfo = New-Object System.Diagnostics.ProcessStartInfo
-		$startInfo.Arguments = "--crf $quantanizer --preset $preset --tune $tune --thread-input $videofilter --output ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).mkv"" ""$($SourceFile.FullName)"""
-		$startInfo.FileName = $x264_path
-		$startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
-		$startInfo.UseShellExecute = $false
-		$process = New-Object System.Diagnostics.Process
-		$process.StartInfo = $startInfo
-		$process.Start() | Out-Null
-		$process.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::Idle
-		$process.WaitForExit()
-
-		if ($(Get-ChildItem "$(Join-Path $OutputDir.FullName $SourceFile.BaseName).mkv").Length -eq 0) {throw "File $($SourceFile.Name) hasn't been compressed."}
+# Video
+		Foreach ($videotrack in $mediainfo.VideoTracks) {
+			"Extracting Video track"
+			Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$($mediainfo.FullName)"" $($videotrack.StreamOrder):""$OutputDir\$($videotrack.UniqueID).$($videotrack.Format)"""
+			"Extracting Timecode for Video track"
+			Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$($mediainfo.FullName)"" $($videotrack.StreamOrder):""$OutputDir\$($videotrack.UniqueID).timecode"""
+		}
+# Audio
+		Foreach ($audiotrack in $mediainfo.AudioTracks) {
+			"Extracting Audio track"
+			Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$($mediainfo.FullName)"" $($audiotrack.StreamOrder):""$OutputDir\$($audiotrack.UniqueID).$($audiotrack.Format)"""
+		}
+# Chapters
+		if ($mediainfo.Chapters){
+			"Extracting Chapters"
+			Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "chapters ""$($mediainfo.FullName)"" -r ""$OutputDir\chapters.xml"""
+		}
 	}
 	end
 	{
 	}
-
 }
 
-Trap {
-	$errorcount++
-	"$($(Get-Date).date) $($_.Exception.Message)" | Out-File -filepath $(Join-Path $in "errors.log") -Append
-}
-
+####################################################################################
 ################################### Main Program ###################################
+####################################################################################
+# Clean Temp
 Remove-Item $enctemp\*
 
-$files = dir $in | where {$_.Extension -eq ".$extension"}
-#if ($files -is $null){exit}
+$files = Get-ChildItem $in | Where-Object {$_.Extension -eq ".$extension"}
+Write-Output "Files will be converted:"
+if ($null -eq $files){Write-Output "No files to convert"} else {$files | ForEach-Object {Write-Output $_.BaseName}}
 :Main Foreach ($file in $files) {
 	$errorcount=0
 	if (-not $(Test-Path -LiteralPath $file.FullName)){continue Main}
 # Process Commands
-	if ($(Test-Path -LiteralPath $(Join-Path $in "terminate"))){Remove-Item $(Join-Path $in "terminate");break}
+	if ($(Test-Path -LiteralPath $(Join-Path $in "terminate"))){
+		Remove-Item $(Join-Path $in "terminate")
+		"Terminate File Found, Exiting"
+		break
+	}
+# Method 1
+#	New-HardLink $enctemp\temp$extension.$extension $($file.FullName)
+#	Start-Process -Wait -NoNewWindow -FilePath "fsutil" -ArgumentList "hardlink create ""$enctemp\temp$extension.$extension"" ""$($file.FullName)"""
 
-	Start-Process -Wait -NoNewWindow -FilePath "fsutil" -ArgumentList "hardlink create ""$enctemp\temp$extension.$extension"" ""$($file.FullName)"""
+# Method 2
+    "Copying file $($file.Name)"
+    $file | Copy-Item -destination "$enctemp\temp$extension.$extension"
+	if ($(Test-Path -LiteralPath "$enctemp\temp$extension.$extension")){"File copied succesfully"} else {break}
 
 # Load Media Info
-	add-Type -Path $MediaInfoWrapper_path
-	$medinfo = new-object MediaInfoWrapper.MediaInfo("$enctemp\temp$extension.$extension")
+	$medinfo = [MediaInfo]::new($MediaInfoWrapper_path)
+    $medinfo.open("$enctemp\temp$extension.$extension")
 
 # Audio Encoding
 #  Selecting Audio tracks
-	$audiotracks = @()
-	Foreach ($audiotrack in $medinfo.Audio) {
-		$audiotrack = Add-Member -memberType NoteProperty -name Custom01 -value "" -PassThru -inputObject $audiotrack
-		Switch ($select_audio_by[0])
-		{
-			"language" 	{if  ($select_audio_by[1] -contains $audiotrack.LanguageString3){$audiotracks += $audiotrack}}
-			"trackid" 	{if ($select_audio_by[1] -contains $audiotrack.StreamKindID){$audiotracks += $audiotrack}}
-			default	{$audiotracks += $audiotrack}
-		}
-	}
+#	Foreach ($audiotrack in $medinfo.Audiotracks) {
+#		Switch ($select_audio_by[0])
+#		{
+#			"language" 	{if ($select_audio_by[1] -contains $audiotrack.Language){$audiotracks += $audiotrack}}
+#			"trackid" 	{if ($select_audio_by[1] -contains $audiotrack.StreamKindID){$audiotracks += $audiotrack}}
+#			default	{$audiotracks += $audiotrack}
+#		}
+#	}
 
+# Audio Encoding
 	Switch ($RecompressMethod)
 	{
 		"AviSynth"  {
 						Copy-Item $(Join-Path $root_path "AviSynthtemplate.avs") "$enctemp\videofile.avs"
 						"DirectShowSource(""$($file.FullName)"")" | Out-File "$enctemp\videofile.avs" -Append -Encoding Ascii
-                        if ($debug){"AviSynth Command Line: $wavi ""$enctemp\videofile.avs"" ""$enctemp\temp.pcm"""}
-						Start-Process -Wait -NoNewWindow -FilePath $wavi -ArgumentList """$enctemp\videofile.avs"" ""$enctemp\temp.pcm"""
-						Convert-Audio $(Get-ChildItem "$enctemp\temp.pcm")
+                        Write-Debug "AviSynth Command Line: $wavi ""$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
+						Start-Process -Wait -NoNewWindow -FilePath $wavi -ArgumentList """$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
+                        Compress-ToM4A -SourceFile "$enctemp\$($medinfo.Audiotracks[0].GUID).pcm" -DestinationFileName "$enctemp\$($audiotrack.GUID).m4a"
 						if ($errorcount -gt 0){continue Main}
-						$audiotracks[0].Custom01 = "temp.m4a"
+						$medinfo.Audiotracks[0].Custom01 = "$($medinfo.Audiotracks[0].GUID).m4a"
+						$medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
+						$medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
+						$audiotrack.Format = $medinfoAud.Audiotracks[0].Format
+						$medinfoAud.Close()
 					}
 		"Decoder"   {
-						Foreach ($audiotrack in $audiotracks) {
-                            if ($debug){"Decoder Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.UniqueID).$($audiotrack.Format)"""}
-                            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.UniqueID).$($audiotrack.Format)"""
-#                            if ($debug){"Decoder Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID):""$enctemp\$($audiotrack.UniqueID).$($audiotrack.Format)"""}
-#							Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID):""$enctemp\$($audiotrack.UniqueID).$($audiotrack.Format)"""
-							$audiotrack.Custom01 = "$($audiotrack.UniqueID).$($audiotrack.Format)"
+						Foreach ($audiotrack in $medinfo.Audiotracks) {
+                            Write-Debug "Decoder Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+                            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+							$audiotrack.Custom01 = "$($audiotrack.GUID).$($audiotrack.Format)"
 							if (-not $take_audio_from_source) {
-								Convert-Audio $(Get-ChildItem "$enctemp\$($audiotrack.UniqueID).$($audiotrack.Format)")
+                                Compress-ToM4A -SourceFile "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)" -DestinationFileName "$enctemp\$($audiotrack.GUID).m4a"
 								if ($errorcount -gt 0){continue Main}
-								$audiotrack.Custom01 = "$($audiotrack.UniqueID).m4a"
+								$audiotrack.Custom01 = "$($audiotrack.GUID).m4a"
+								$medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
+								$medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
+								$audiotrack.Format = $medinfoAud.Audiotracks[0].Format
+								$medinfoAud.Close()
 							}
 						}
-
 					}
 		default	{throw "Unknown Recompress Method."}
 	}
 
-#	Foreach ($audiotrack in $audiotracks) {
-#		Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.UniqueID).$($audiotrack.Format)"""
-#		$audiotrack.Custom01 = "$($audiotrack.UniqueID).$($audiotrack.Format)"
-#		if (-not $take_audio_from_source) {
-#			Convert-Audio $(Get-ChildItem "$enctemp\$($audiotrack.UniqueID).$($audiotrack.Format)")
-#			if ($errorcount -gt 0){continue Main}
-#			$audiotrack.Custom01 = "$($audiotrack.UniqueID).m4a"
-#		}
-#	}
-
-
 # Video Encoding
-	$videotracks = @()
-#  Extracting timecode & Chapters
-	Foreach ($videotrack in $medinfo.Video) {
-		$videotrack = Add-Member -memberType NoteProperty -name Custom01 -value "" -PassThru -inputObject $videotrack
-		$videotracks += $videotrack
-#		Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID):""$enctemp\$($videotrack.UniqueID).timecode"""
-        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.UniqueID).timecode"""
+#  Extracting timecode
+	Foreach ($videotrack in $medinfo.Videotracks) {
+	        "Extracting timecodes..."
+		    Write-Debug "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
+	        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
 	}
 
 #  Extracting Chapters
-	if ($Copy_Chapters){
-		Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
+	if ($Copy_Chapters -and $medinfo.Chapters){
+	        "Extracting chapters..."
+            Write-Debug "mkvextract Command Line: $mkvextract_path chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
+		    Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
 	}
 
 #  Encoding
 	if ($errorcount -gt 0){continue Main}
-	Foreach ($videotrack in $videotracks) {
-#		Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.UniqueID).$($videotrack.Format)"" --video-tracks $($videotrack.ID) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
-        Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.UniqueID).$($videotrack.Format)"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
-		Copy-Item $(Join-Path $root_path "AviSynthtemplate.avs") "$enctemp\$($videotrack.UniqueID).avs"
+	Foreach ($videotrack in $medinfo.Videotracks) {
+#		Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.ID) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+		Write-Debug "mkvextract Command Line: $mkvextract_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+		Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
 		Switch ($DecompressSource)
 		{
-			"DirectShowSource"   {"DirectShowSource(""$($videotrack.UniqueID).$($videotrack.Format)"")" | Out-File "$enctemp\$($videotrack.UniqueID).avs" -Append -Encoding Ascii}
-			"FFVideoSource"   {"FFVideoSource(""$($videotrack.UniqueID).$($videotrack.Format)"")" | Out-File "$enctemp\$($videotrack.UniqueID).avs" -Append -Encoding Ascii}
+			"DirectShowSource"   	{
+                    		Copy-Item $(Join-Path $root_path "AviSynthtemplate.avs") "$enctemp\$($videotrack.GUID).avs"
+			    "DirectShowSource(""$($videotrack.GUID).$($videotrack.Format)"")" | Out-File "$enctemp\$($videotrack.GUID).avs" -Append -Encoding Ascii
+                            $H265Encode = [TH265]::new($x265_path, $ffmpeg_path);
+                            $H265Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).avs";
+                            $H265Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).hvec";
+                            $H265Encode.Quantanizer = $quantanizer;
+                            $H265Encode.Preset = $preset;
+                            $H265Encode.Tune = $tune;
+                            $H265Encode.fps = $videotrack.fps;
+                            $H265Encode.Resolution = $videotrack.BitDepth;
+                            $H265Encode.Bitdepth = $videotrack.BitDepth;
+                            $H264Encode.Resize.Enabled = $resize[0];
+                            $H264Encode.Resize.Width = $resize[1];
+                            $H264Encode.Resize.Height = $resize[2];
+                            $H264Encode.Resize.Method = $resize[3];
+                            $H264Encode.Crop.Enabled = $crop[0];
+                            $H264Encode.Crop.Left = $crop[1];
+                            $H264Encode.Crop.Top = $crop[2];
+                            $H264Encode.Crop.Right = $crop[3];
+                            $H264Encode.Crop.Bottom = $crop[4];
+							$videotrack.Custom01 = "$($videotrack.GUID).mkv"
+                            $H264Encode.Compress();
+                            $H264Encode = $null;
+
+						}
+			"FFVideoSource"   	{
+                    		Copy-Item $(Join-Path $root_path "AviSynthtemplate.avs") "$enctemp\$($videotrack.GUID).avs"
+							"FFVideoSource(""$($videotrack.GUID).$($videotrack.Format)"")" | Out-File "$enctemp\$($videotrack.GUID).avs" -Append -Encoding Ascii
+                            $H264Encode = [TH265]::new($x264_path);
+                            $H264Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).avs";
+                            $H264Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).hvec";
+                            $H264Encode.Quantanizer = $quantanizer;
+                            $H264Encode.Preset = $preset;
+                            $H264Encode.Tune = $tune;
+                            $H264Encode.Resize.Enabled = $resize[0];
+                            $H264Encode.Resize.Width = $resize[1];
+                            $H264Encode.Resize.Height = $resize[2];
+                            $H264Encode.Resize.Method = $resize[3];
+                            $H264Encode.Crop.Enabled = $crop[0];
+                            $H264Encode.Crop.Left = $crop[1];
+                            $H264Encode.Crop.Top = $crop[2];
+                            $H264Encode.Crop.Right = $crop[3];
+                            $H264Encode.Crop.Bottom = $crop[4];
+							$videotrack.Custom01 = "$($videotrack.GUID).mkv"
+                            $H264Encode.Compress();
+                            $H264Encode = $null;
+						}
+			"Direct"   		{
+							"$($videotrack.GUID).$($videotrack.Format)"
+                            $H264Encode = [H264]::new($x264_path);
+                            $H264Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).$($videotrack.Format)";
+                            $H264Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).mkv";
+                            $H264Encode.Quantanizer = $quantanizer;
+                            $H264Encode.Preset = $preset;
+                            $H264Encode.Tune = $tune;
+                            $H264Encode.Resize.Enabled = $resize[0];
+                            $H264Encode.Resize.Width = $resize[1];
+                            $H264Encode.Resize.Height = $resize[2];
+                            $H264Encode.Resize.Method = $resize[3];
+                            $H264Encode.Crop.Enabled = $crop[0];
+                            $H264Encode.Crop.Left = $crop[1];
+                            $H264Encode.Crop.Top = $crop[2];
+                            $H264Encode.Crop.Right = $crop[3];
+                            $H264Encode.Crop.Bottom = $crop[4];
+							$videotrack.Custom01 = "$($videotrack.GUID).mkv"
+                            $H264Encode.Compress();
+                            $H264Encode = $null;
+						}
 			default	{throw "Unknown Recompress Method."}
 		}
 
-		Compress-Video $(Get-ChildItem "$enctemp\$($videotrack.UniqueID).avs") -quantanizer $quantanizer -preset $preset -tune $tune -crop $crop -resize $resize -pulldown $pulldown
-		$videotrack.Custom01 = "$($videotrack.UniqueID).mkv"
 	}
-	
-# Building Result File
-#	$audiotrack="--language 1:$aud_language --audio-tracks 1 --compression 1:none --no-video --no-subtitles ""$enctemp\temp.m4a"""
-#	$audiotrack="--language 1:$aud_language --audio-tracks 1 --compression 1:none --no-video --no-subtitles ""$enctemp\temp$extension.$extension"""
-#	$videotrack = "--language 1:$vid_language --default-track 1 --video-tracks 1 --compression 1:none --no-audio --no-subtitles --timecodes 1:""$enctemp\temp$extension.txt"" ""$enctemp\temp.mkv"""
-#  --track-order 0:1,1:2
 
 #  Check for Errors
 	if ($errorscount -gt 0){continue Main}
+    
+    $mkvmerge = [MKVMerge]::new($mkvmerge_path);
+    $mkvmerge.DestinationFile = "$out\$($file.basename).mkv";
 
-    $track_order = "--track-order ";
-    $global = "";
-    $track_order_idx = 0;
-
-  # Generate Video
-    $item_n = $item - 1;
-	$videotrack_cli = ""
-	Foreach ($videotrack in $videotracks) {
-	    $videotrack_cli += " --default-track 0";
-	    $videotrack_cli += " --timecodes 0:""$enctemp\$($videotrack.UniqueID).timecode"""
-		if ($video_languages[0] -or (-not $videotrack.LanguageString3)) {$videotrack_cli += " --language 0:""$($video_languages[[int]$videotrack.StreamKindID+1])"""} else {$videotrack_cli += " --language 0:""$($videotrack.LanguageString3)"""}
-		$videotrack_cli += " --video-tracks 0"
-		$videotrack_cli += " --compression 0:none"
-		$videotrack_cli += " --no-audio --no-subtitles --no-chapters"
-		$videotrack_cli += " --track-name 0:""$($videotrack.Title)"""
-		$videotrack_cli += " ""$enctemp\$($videotrack.Custom01)"""
-		$track_order += "$($track_order_idx):0"
-		$track_order_idx = $track_order_idx + 1
+  # Combine MKV
+	Foreach ($videotrack in $medinfo.Videotracks) {
+        $videotrk = [TVideoTrack]::new()
+        $videotrk.FileName = "$enctemp\$($videotrack.Custom01)";
+		if ($video_languages[0] -or (-not $videotrack.Language)) {$videotrk.Language = $video_languages[[int]$videotrack.StreamKindID+1]} else {$videotrk.Language = $($videotrack.Language)}
+        $videotrk.Title = $videotrack.Title
+        $videotrk.TimeCodeFile = "$enctemp\$($videotrack.GUID).timecode";
+        $mkvmerge.VideoTracks += $videotrk;
 	}
 
-	$audiotrack_cli = ""
-	Foreach ($audiotrack in $audiotracks) {
-		$medinfo_a = new-object MediaInfoWrapper.MediaInfo("$enctemp\$($audiotrack.Custom01)")
-		$audiotrack_cli += " --default-track 0";
-		if ($audio_languages[0] -or (-not $audiotrack.LanguageString3)) {$audiotrack_cli += " --language 0:""$($audio_languages[[int]$audiotrack.StreamKindID+1])"""} else {$audiotrack_cli += " --language 0:""$($audiotrack.LanguageString3)"""}
-		$audiotrack_cli += " --audio-tracks 0"
-		$audiotrack_cli += " --compression 0:none"
-		$audiotrack_cli += " --no-video --no-subtitles --no-chapters"
-		$audiotrack_cli += " --track-name 0:""$($medinfo_a.Audio[0].Format) $($medinfo_a.Audio[0].ChannelsString)"""
-		$audiotrack_cli += " ""$enctemp\$($audiotrack.Custom01)"""
-		$track_order += ",$($track_order_idx):0"
-		$track_order_idx = $track_order_idx + 1
+	Foreach ($audiotrack in $medinfo.Audiotracks) {
+        $audiotrk = [TAudioTrack]::new()
+        $audiotrk.FileName = "$enctemp\$($audiotrack.Custom01)";
+		if ($audio_languages[0] -or (-not $audiotrack.Language)) {$audiotrk.Language = $audio_languages[[int]$audiotrack.StreamKindID+1]} else {$audiotrk.Language = $($audiotrack.Language)}
+        $audiotrk.Title = "$($audiotrack.Format) $($audiotrack.Channels)";
+        $mkvmerge.AudioTracks += $audiotrk;
 	}
 
-	$chapters_cli = ""
-	if ($Copy_Chapters -and $($((Get-Item "$enctemp\chapters.xml").Length) -gt 0)){
-		$chapters_cli = "--chapters ""$enctemp\chapters.xml"""
+	if ($Copy_Chapters -and $(Test-Path -LiteralPath "$enctemp\chapters.xml") -and $($((Get-Item "$enctemp\chapters.xml").Length) -gt 0)){
+        $mkvmerge.ChaptersFile = "$enctemp\chapters.xml"
 	}
-    if ($debug) {
-      "Run Command Cli: $mkvmerge_path --output ""$out\$($file.basename).mkv"" $videotrack_cli $audiotrack_cli $track_order $chapters_cli" 
-	}
-	Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "--output ""$out\$($file.basename).mkv"" $videotrack_cli $audiotrack_cli $track_order $chapters_cli"
-
-# ExitCode is available when using -Wait...
-#Write-Host "Starting Notepad with -Wait - return code will be available"
-#$process = (Start-Process -FilePath "notepad.exe" -PassThru -Wait)
-#Write-Host "Process finished with return code: " $process.ExitCode
-#	if ($LASTEXITCODE -gt 0){$errorcount++}
+    $res = $mkvmerge.MakeFile()
+	Write-Debug "Run Command Cli: $res"
 
 # Removing Temp Files
-	if (-not $debug) {
+	if (-not $(Test-Debug)) {
     	Remove-Item $enctemp\*
 		if ($del_original -and $(Test-Path -LiteralPath $out\$($file.basename).mkv) -and $($errorcount -eq 0)){Remove-Item -LiteralPath $file.fullname}
 	}
 }
 
+# Last Task
 if ($(Test-Path -LiteralPath $(Join-Path $in "shutdown"))){Remove-Item $(Join-Path $in "shutdown");$shutdown=$true}
-if ($debug) {
-	""
-	"Debug Mode Enabled: $debug"
-	"Delete Original: $del_original"
-	"Result File: $out\$($file.basename).mkv"
-	"Result File Found: $(Test-Path -LiteralPath $out\$($file.basename).mkv)"
-	"Errors Count: $errorcount"
-	""
-	"Video Track Cli: $videotrack_cli"
-	"Audio Track Cli: $audiotrack_cli"
-	"Track Order: $track_order"
-	""
-	"Shutdown mode enabled: $shutdown"
-}
+Write-Debug ""
+Write-Debug "Debug Mode Enabled: $true"
+Write-Debug "Delete Original: $del_original"
+Write-Debug "Result File: $out\$($file.basename).mkv"
+Write-Debug "Result File Found: $(Test-Path -LiteralPath $out\$($file.basename).mkv)"
+Write-Debug "Errors Count: $errorcount"
+Write-Debug ""
+Write-Debug "Shutdown mode enabled: $shutdown"
+Write-Debug "Press any key to Continue"
+if (Test-Debug) {$host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | OUT-NULL}
+Write-Output "Process completed"
 if ($shutdown){shutdown -t 60 -f -s}

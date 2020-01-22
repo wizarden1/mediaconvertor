@@ -34,6 +34,7 @@ class MediaInfoVideoTrack {
     [string]$CodecID;
     [int16]$Width;
     [int16]$Height;
+    [int16]$BitDepth;
     [string]$DisplayAspectRatio;
     [string]$Custom01 = "";
     [string]$Custom02 = "";
@@ -71,7 +72,7 @@ class MediaInfo {
     hidden [string]$MediaFile;
     hidden [PSObject]$medinfo;
 
-# Properties
+    # Properties
     [string]$FullName;
     [string]$DirectoryName;
     [string]$BaseName;
@@ -80,41 +81,41 @@ class MediaInfo {
     [long] $StreamSize;
     [string] $Title;
     [string] $Album;
-	[string] $AlbumPerformer;
+    [string] $AlbumPerformer;
     [string] $Track;
     [string] $Genre;
     [string] $ContentType;
     [string] $Composer;
     [string] $Performer;
-	[string] $Format;
-	[string] $Codec;
-	[long] $TrackPosition;
-	[long] $TrackPosition_Total;
-	[string] $Chapter;
-	[string] $Publisher;
-	[string] $Recorded_Date;
-	[string] $Copyright;
+    [string] $Format;
+    [string] $Codec;
+    [long] $TrackPosition;
+    [long] $TrackPosition_Total;
+    [string] $Chapter;
+    [string] $Publisher;
+    [string] $Recorded_Date;
+    [string] $Copyright;
     [MediaInfoAudioTrack[]]$Audiotracks;
     [MediaInfoVideoTrack[]]$Videotracks;
     [MediaInfoTextTrack[]]$Texttracks;
-	[bool]$Chapters = $false;
+    [bool]$Chapters = $false;
 
 
-# Constructor
-	MediaInfo ([String]$MediaInfoWrapper_path) {
-        if (Test-Path $MediaInfoWrapper_path -PathType Leaf){$this.MediaInfoWrapper_path = $MediaInfoWrapper_path} else {throw "ERROR: Can not access library MediaInfoWrapper."}
-		add-Type -Path $MediaInfoWrapper_path
-	}
+    # Constructor
+    MediaInfo ([String]$MediaInfoWrapper_path) {
+        if (Test-Path $MediaInfoWrapper_path -PathType Leaf) { $this.MediaInfoWrapper_path = $MediaInfoWrapper_path } else { throw "ERROR: Can not access library MediaInfoWrapper." }
+        add-Type -Path $MediaInfoWrapper_path
+    }
 
-# Methods
+    # Methods
     [void] Open () {
         $this.Close()
 
-        if ($this.medinfo) {$this.medinfo = $null}
-        if (Test-Path $this.MediaFile -PathType Leaf){} else {throw "ERROR: Media file doesn't exists."}
+        if ($this.medinfo) { $this.medinfo = $null }
+        if (Test-Path $this.MediaFile -PathType Leaf) { } else { throw "ERROR: Media file doesn't exists." }
 
         $this.medinfo = new-object MediaInfoWrapper.MediaInfo($this.MediaFile)
-## General
+        ## General
         $this.FullName = $this.medinfo.General[0].CompleteName;
         $this.DirectoryName = $this.medinfo.General[0].FolderName;
         $this.BaseName = $this.medinfo.General[0].FileName;
@@ -129,73 +130,74 @@ class MediaInfo {
         $this.Composer = $this.medinfo.General[0].Composer;
         $this.AlbumPerformer = $this.medinfo.General[0].AlbumPerformer;
         $this.Performer = $this.medinfo.General[0].Performer;
-		$this.Format = $this.medinfo.General[0].Format;
-		$this.Codec = $this.medinfo.General[0].Codec;
-		$this.TrackPosition = $this.medinfo.General[0].TrackPosition;
-		$this.TrackPosition_Total = $this.medinfo.General[0].TrackPosition_Total;
-		$this.Chapter = $this.medinfo.General[0].Chapter;
-		$this.Publisher = $this.medinfo.General[0].Publisher;
-		$this.Recorded_Date = $this.medinfo.General[0].Recorded_Date;
-		$this.Copyright = $this.medinfo.General[0].Copyright;
+        $this.Format = $this.medinfo.General[0].Format;
+        $this.Codec = $this.medinfo.General[0].Codec;
+        $this.TrackPosition = $this.medinfo.General[0].TrackPosition;
+        $this.TrackPosition_Total = $this.medinfo.General[0].TrackPosition_Total;
+        $this.Chapter = $this.medinfo.General[0].Chapter;
+        $this.Publisher = $this.medinfo.General[0].Publisher;
+        $this.Recorded_Date = $this.medinfo.General[0].Recorded_Date;
+        $this.Copyright = $this.medinfo.General[0].Copyright;
 
-## Audio
-		Foreach ($audtrack in $this.medinfo.Audio) {
-    		$audiotrack = [MediaInfoAudioTrack]::new()
+        ## Audio
+        Foreach ($audtrack in $this.medinfo.Audio) {
+            $audiotrack = [MediaInfoAudioTrack]::new()
             $audiotrack.ID = $audtrack.ID;
             $audiotrack.StreamOrder = $audtrack.StreamOrder;
-    		$audiotrack.UniqueID = $audtrack.UniqueID;
-    		$audiotrack.Format = $audtrack.Format;
-			$audiotrack.Title = $audtrack.Title;
-			$audiotrack.StreamKindID = $audtrack.StreamKindID;
-			$audiotrack.Language = $audtrack.LanguageString3;
-			$audiotrack.CodecID = $audtrack.CodecID;
-			$audiotrack.Channels = $audtrack.ChannelsString;
-			$audiotrack.SamplingRate = $audtrack.SamplingRate;
-			$this.Audiotracks += $audiotrack
-		}
+            $audiotrack.UniqueID = $audtrack.UniqueID;
+            $audiotrack.Format = $audtrack.Format;
+            $audiotrack.Title = $audtrack.Title;
+            $audiotrack.StreamKindID = $audtrack.StreamKindID;
+            $audiotrack.Language = $audtrack.LanguageString3;
+            $audiotrack.CodecID = $audtrack.CodecID;
+            $audiotrack.Channels = $audtrack.ChannelsString;
+            $audiotrack.SamplingRate = $audtrack.SamplingRate;
+            $this.Audiotracks += $audiotrack
+        }
 
-## Video
-		Foreach ($vidtrack in $this.medinfo.Video) {
-			$videotrack = [MediaInfoVideoTrack]::new()
-			$videotrack.ID = $vidtrack.ID;
-			$videotrack.StreamOrder = $vidtrack.StreamOrder;
-			$videotrack.UniqueID = $vidtrack.UniqueID;
-			$videotrack.Title = $vidtrack.Title;
-			$videotrack.Format = $vidtrack.Format;
-			$videotrack.Language = $vidtrack.LanguageString3;
-			$videotrack.StreamKindID = $vidtrack.StreamKindID;
-			$videotrack.Width = $vidtrack.Width;
-			$videotrack.Height = $vidtrack.Height;
-			$videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
-			$videotrack.CodecID = $vidtrack.CodecID;
-			$this.Videotracks += $videotrack
-		}
+        ## Video
+        Foreach ($vidtrack in $this.medinfo.Video) {
+            $videotrack = [MediaInfoVideoTrack]::new()
+            $videotrack.ID = $vidtrack.ID;
+            $videotrack.StreamOrder = $vidtrack.StreamOrder;
+            $videotrack.UniqueID = $vidtrack.UniqueID;
+            $videotrack.Title = $vidtrack.Title;
+            $videotrack.Format = $vidtrack.Format;
+            $videotrack.Language = $vidtrack.LanguageString3;
+            $videotrack.StreamKindID = $vidtrack.StreamKindID;
+            $videotrack.Width = $vidtrack.Width;
+            $videotrack.Height = $vidtrack.Height;
+            $videotrack.BitDepth = $vidtrack.BitDepth;
+            $videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
+            $videotrack.CodecID = $vidtrack.CodecID;
+            $this.Videotracks += $videotrack
+        }
 
-## Text
-		Foreach ($txttrack in $this.medinfo.Text) {
-			$texttrack = [MediaInfoTextTrack]::new()
-			$texttrack.ID = $txttrack.ID;
-			$texttrack.StreamOrder = $txttrack.StreamOrder;
-			$texttrack.UniqueID = $txttrack.UniqueID;
-			$texttrack.Title = $txttrack.Title;
-			$texttrack.Format = $txttrack.Format;
-			$texttrack.Language = $txttrack.LanguageString3;
-			$texttrack.StreamKindID = $txttrack.StreamKindID;
-			$texttrack.CodecID = $txttrack.CodecID;
-			$this.Texttracks += $texttrack
-		}
+        ## Text
+        Foreach ($txttrack in $this.medinfo.Text) {
+            $texttrack = [MediaInfoTextTrack]::new()
+            $texttrack.ID = $txttrack.ID;
+            $texttrack.StreamOrder = $txttrack.StreamOrder;
+            $texttrack.UniqueID = $txttrack.UniqueID;
+            $texttrack.Title = $txttrack.Title;
+            $texttrack.Format = $txttrack.Format;
+            $texttrack.Language = $txttrack.LanguageString3;
+            $texttrack.StreamKindID = $txttrack.StreamKindID;
+            $texttrack.CodecID = $txttrack.CodecID;
+            $this.Texttracks += $texttrack
+        }
 
-## Chapters
-    	$this.Chapters = ($this.medinfo.MenuCount -gt 0)
+        ## Chapters
+        $this.Chapters = ($this.medinfo.MenuCount -gt 0)
 
     }
 
     [void] Open ([string]$MediaFile) {
         $this.Close()
 
-        if (Test-Path $MediaFile -PathType Leaf){$this.MediaFile = $MediaFile} else {throw "ERROR: Media file doesn't exists."}
+        if (Test-Path $MediaFile -PathType Leaf) { $this.MediaFile = $MediaFile } else { throw "ERROR: Media file doesn't exists." }
         $this.medinfo = new-object MediaInfoWrapper.MediaInfo($MediaFile)
-## General
+        ## General
         $this.FullName = $this.medinfo.General[0].CompleteName;
         $this.DirectoryName = $this.medinfo.General[0].FolderName;
         $this.BaseName = $this.medinfo.General[0].FileName;
@@ -210,64 +212,65 @@ class MediaInfo {
         $this.Composer = $this.medinfo.General[0].Composer;
         $this.AlbumPerformer = $this.medinfo.General[0].AlbumPerformer;
         $this.Performer = $this.medinfo.General[0].Performer;
-		$this.Format = $this.medinfo.General[0].Format;
-		$this.Codec = $this.medinfo.General[0].Codec;
-		$this.TrackPosition = $this.medinfo.General[0].TrackPosition;
-		$this.TrackPosition_Total = $this.medinfo.General[0].TrackPosition_Total;
-		$this.Chapter = $this.medinfo.General[0].Chapter;
-		$this.Publisher = $this.medinfo.General[0].Publisher;
-		$this.Recorded_Date = $this.medinfo.General[0].Recorded_Date;
-		$this.Copyright = $this.medinfo.General[0].Copyright;
+        $this.Format = $this.medinfo.General[0].Format;
+        $this.Codec = $this.medinfo.General[0].Codec;
+        $this.TrackPosition = $this.medinfo.General[0].TrackPosition;
+        $this.TrackPosition_Total = $this.medinfo.General[0].TrackPosition_Total;
+        $this.Chapter = $this.medinfo.General[0].Chapter;
+        $this.Publisher = $this.medinfo.General[0].Publisher;
+        $this.Recorded_Date = $this.medinfo.General[0].Recorded_Date;
+        $this.Copyright = $this.medinfo.General[0].Copyright;
 
-## Audio
-		Foreach ($audtrack in $this.medinfo.Audio) {
-    		$audiotrack = [MediaInfoAudioTrack]::new()
+        ## Audio
+        Foreach ($audtrack in $this.medinfo.Audio) {
+            $audiotrack = [MediaInfoAudioTrack]::new()
             $audiotrack.ID = $audtrack.ID;
             $audiotrack.StreamOrder = $audtrack.StreamOrder;
-    		$audiotrack.UniqueID = $audtrack.UniqueID;
-    		$audiotrack.Format = $audtrack.Format;
-			$audiotrack.Title = $audtrack.Title;
-			$audiotrack.StreamKindID = $audtrack.StreamKindID;
-			$audiotrack.Language = $audtrack.LanguageString3;
-			$audiotrack.CodecID = $audtrack.CodecID;
-			$audiotrack.Channels = $audtrack.ChannelsString;
-			$audiotrack.SamplingRate = $audtrack.SamplingRate;
-			$this.Audiotracks += $audiotrack
-		}
+            $audiotrack.UniqueID = $audtrack.UniqueID;
+            $audiotrack.Format = $audtrack.Format;
+            $audiotrack.Title = $audtrack.Title;
+            $audiotrack.StreamKindID = $audtrack.StreamKindID;
+            $audiotrack.Language = $audtrack.LanguageString3;
+            $audiotrack.CodecID = $audtrack.CodecID;
+            $audiotrack.Channels = $audtrack.ChannelsString;
+            $audiotrack.SamplingRate = $audtrack.SamplingRate;
+            $this.Audiotracks += $audiotrack
+        }
 
-## Video
-		Foreach ($vidtrack in $this.medinfo.Video) {
-			$videotrack = [MediaInfoVideoTrack]::new()
-			$videotrack.ID = $vidtrack.ID;
-			$videotrack.StreamOrder = $vidtrack.StreamOrder;
-			$videotrack.UniqueID = $vidtrack.UniqueID;
-			$videotrack.Title = $vidtrack.Title;
-			$videotrack.Format = $vidtrack.Format;
-			$videotrack.Language = $vidtrack.LanguageString3;
-			$videotrack.StreamKindID = $vidtrack.StreamKindID;
-			$videotrack.Width = $vidtrack.Width;
-			$videotrack.Height = $vidtrack.Height;
-			$videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
-			$videotrack.CodecID = $vidtrack.CodecID;
-			$this.Videotracks += $videotrack
-		}
+        ## Video
+        Foreach ($vidtrack in $this.medinfo.Video) {
+            $videotrack = [MediaInfoVideoTrack]::new()
+            $videotrack.ID = $vidtrack.ID;
+            $videotrack.StreamOrder = $vidtrack.StreamOrder;
+            $videotrack.UniqueID = $vidtrack.UniqueID;
+            $videotrack.Title = $vidtrack.Title;
+            $videotrack.Format = $vidtrack.Format;
+            $videotrack.Language = $vidtrack.LanguageString3;
+            $videotrack.StreamKindID = $vidtrack.StreamKindID;
+            $videotrack.Width = $vidtrack.Width;
+            $videotrack.Height = $vidtrack.Height;
+            $videotrack.BitDepth = $vidtrack.BitDepth;
+            $videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
+            $videotrack.CodecID = $vidtrack.CodecID;
+            $this.Videotracks += $videotrack
+        }
 
-## Text
-		Foreach ($txttrack in $this.medinfo.Text) {
-			$texttrack = [MediaInfoTextTrack]::new()
-			$texttrack.ID = $txttrack.ID;
-			$texttrack.StreamOrder = $txttrack.StreamOrder;
-			$texttrack.UniqueID = $txttrack.UniqueID;
-			$texttrack.Title = $txttrack.Title;
-			$texttrack.Format = $txttrack.Format;
-			$texttrack.Language = $txttrack.LanguageString3;
-			$texttrack.StreamKindID = $txttrack.StreamKindID;
-			$texttrack.CodecID = $txttrack.CodecID;
-			$this.Texttracks += $texttrack
-		}
+        ## Text
+        Foreach ($txttrack in $this.medinfo.Text) {
+            $texttrack = [MediaInfoTextTrack]::new()
+            $texttrack.ID = $txttrack.ID;
+            $texttrack.StreamOrder = $txttrack.StreamOrder;
+            $texttrack.UniqueID = $txttrack.UniqueID;
+            $texttrack.Title = $txttrack.Title;
+            $texttrack.Format = $txttrack.Format;
+            $texttrack.Language = $txttrack.LanguageString3;
+            $texttrack.StreamKindID = $txttrack.StreamKindID;
+            $texttrack.CodecID = $txttrack.CodecID;
+            $this.Texttracks += $texttrack
+        }
 
-## Chapters
-    	$this.Chapters = ($this.medinfo.MenuCount -gt 0)
+        ## Chapters
+        $this.Chapters = ($this.medinfo.MenuCount -gt 0)
 
     }
 
@@ -284,4 +287,4 @@ class MediaInfo {
 
 }
 
-$res = [MediaInfo]::new($MediaInfoWrapper_path)
+#$res = [MediaInfo]::new($MediaInfoWrapper_path)
