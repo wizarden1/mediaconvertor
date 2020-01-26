@@ -135,9 +135,9 @@ class ffmpeg {
 }
 
 
-$res = [ffmpeg]::new("D:\1\ffmpeg_64.exe")
-$res.Tune = [tune]::animation
-$res.Codec = [codec]::libx264;
-$res.SourceFileAVS = "D:\1\1.m4v"
-$res.DestinationFileName = "D:\Multimedia\Programs\Utils\temp\test.hevc"
-$res.Compress()
+#$res = [ffmpeg]::new("D:\1\ffmpeg_64.exe")
+#$res.Tune = [tune]::animation
+#$res.Codec = [codec]::libx264;
+#$res.SourceFileAVS = "D:\1\1.m4v"
+#$res.DestinationFileName = "D:\Multimedia\Programs\Utils\temp\test.hevc"
+#$res.Compress()
