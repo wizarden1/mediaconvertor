@@ -23,14 +23,14 @@ $video_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default
 $tune = "animation" #tune:film,animation,grain,psnr,ssim,fastdecode,touhou
 $DecompressSource = "Direct"	#"FFVideoSource"|"DirectShowSource"|"Direct"
 $Copy_Chapters = $true
-$quantanizer = 20
+$quantanizer = 24
 $preset = "medium"		#ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
 #$preset = "ultrafast"
 $codec = "libx265"                #libx264,libx265
 
 #Subtitles
 $Copy_Subtitles = $true
-$Sub_languages = @("eng", "rus") #@("lng1","lng2","lng3",...)
+$Sub_languages = @("rus") #@("lng1","lng2","lng3",...)
 
 #Filters
 $crop = @($false, 40, 0, 40, 0) #crop:enabled,left,top,right,bottom
