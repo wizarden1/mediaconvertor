@@ -2,7 +2,6 @@ in
 out
 temp
 tools
-.idea/inspectionProfiles/
-.idea/vcs.xml
-.idea/workspace.xml
+tools_64
+.idea
 .vs

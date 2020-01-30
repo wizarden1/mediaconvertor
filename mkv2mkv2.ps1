@@ -54,6 +54,7 @@ $extension = "MKV"
 #General Paths
 $root_path = $(Get-Location).Path
 $tools_path = Join-Path $root_path "tools"
+$toolsx64_path = Join-Path $root_path "tools_64"
 $enctemp = Join-Path $root_path "temp"
 $out = Join-Path $root_path "out"
 $in = Join-Path $root_path "in"
@@ -70,15 +71,15 @@ if (-not $(Test-Path -LiteralPath $enctemp)) { New-Item -Path $root_path -Name "
 
 #Tools
 $neroAacEnc_path = Join-Path $tools_path "neroAacEnc.exe"
-$MediaInfoWrapper_path = Join-Path $tools_path "MediaInfoWrapper.dll"
-$mkvmerge_path = Join-Path $tools_path "mkvtoolnix\mkvmerge.exe"
-$mkvextract_path = Join-Path $tools_path "mkvtoolnix\mkvextract.exe"
+$MediaInfoWrapper_path = Join-Path $toolsx64_path "MediaInfoWrapper.dll"
+$mkvmerge_path = Join-Path $toolsx64_path "mkvtoolnix\mkvmerge.exe"
+$mkvextract_path = Join-Path $toolsx64_path "mkvtoolnix\mkvextract.exe"
 $oggdec_path = Join-Path $tools_path "oggdec.exe"
 $eac3to = Join-Path $tools_path "eac3to\eac3to.exe"
 $faad_path = Join-Path $tools_path "faad.exe"
 $wavi = Join-Path $tools_path "Wavi.exe"
-$avs2yuv_path = Join-Path $tools_path "avs2yuv\avs2yuv64.exe"
-$ffmpeg_path = Join-Path $tools_path "ffmpeg.exe"
+$avs2yuv_path = Join-Path $toolsx64_path "avs2yuv\avs2yuv64.exe"
+$ffmpeg_path = Join-Path $toolsx64_path "ffmpeg.exe"
 $title_json = Join-Path $in $titles_json
 
 #Check Prerequisite
