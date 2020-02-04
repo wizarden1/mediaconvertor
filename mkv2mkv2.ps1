@@ -24,7 +24,7 @@ $tune = "animation" #tune:film,animation,grain,psnr,ssim,fastdecode,touhou
 $DecompressSource = "Direct"	#"FFVideoSource"|"DirectShowSource"|"Direct"
 $Copy_Chapters = $true
 $quantanizer = 24
-$preset = "medium"		#ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
+$preset = "ultrafast"		#ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
 #$preset = "ultrafast"
 $codec = "libx265"                #libx264,libx265
 
@@ -33,17 +33,19 @@ $Copy_Subtitles = $true
 $Sub_languages = @("rus") #@("lng1","lng2","lng3",...)
 
 #Filters
-$crop = @($false, 40, 0, 40, 0) #crop:enabled,left,top,right,bottom
+#$crop = @($false, 40, 0, 40, 0) #crop:enabled,left,top,right,bottom
+$crop = @($true, 0, 28, 0, 28) #crop:enabled,left,top,right,bottom
 #$resize=@($true,1280,720,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,960,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
-$resize = @($false, 0, 0, "lanczos", "") #resize:enabled,width,height,method,", additional parametrs"
+#$resize = @($false, 0, 0, "lanczos", "") #resize:enabled,width,height,method,", additional parametrs"
+$resize=@($true,640,480,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1024,768,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,544,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$pulldown=@($false,"")	#pulldown:enabled,"step,offset1[,...]"
 
 #Advanced Config
-$del_original = $true
-$titles_from_json = $true  #Use title of series from json
+$del_original = $false
+$titles_from_json = $false  #Use title of series from json
 $titles_json = "boruto.json" #[{"file": "Overlord - 01 [Beatrice-Raws].mkv","title": "End and Beginning"},{...}]
 #$debug=$false
 #$DebugPreference="Continue"  #Enable Debug mode

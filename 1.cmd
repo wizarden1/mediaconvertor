@@ -1,2 +1,2 @@
-rem ffmpeg -i "concat:input0.mp3|input1.mp3|input2.mp3" -f wav - | neroAacEnc -if - -ignorelength output.m4b
-ffmpeg -i "001.mp3" -f wav - | neroAacEnc -if - -ignorelength output.m4b
+C:\Multimedia\Programs\mkvtoolnix\mkvmerge.exe -o "out\\01.mkv" --language 1:eng --default-track 1 --video-tracks 1 --compression 1:none --no-audio --no-subtitles "temp\\temp.mkv" --language 1:eng --audio-tracks 1 --compression 1:none --no-video --no-subtitles "temp\\temp.m4a"
+rem "C:\Multimedia\Programs\mkvtoolnix\mkvmerge.exe" -o "C:\\Multimedia\\Programs\\Utils\\temp\\temp (1).mkv"  "--language" "0:eng" "--default-track" "0:yes" "--forced-track" "0:no" "--display-dimensions" "0:768x432" "-d" "0" "-A" "-S" "-T" "--no-global-tags" "--no-chapters" "(" "C:\\Multimedia\\Programs\\Utils\\temp\\temp.mkv" ")" "--forced-track" "0:no" "-a" "0" "-D" "-S" "-T" "--no-global-tags" "--no-chapters" "(" "C:\\Multimedia\\Programs\\Utils\\temp\\temp.m4a" ")" "--track-order" "0:0,1:0"

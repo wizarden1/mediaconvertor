@@ -107,8 +107,12 @@ class ffmpeg {
 		
         # Creating Filter
         $filters = @()
-        if ($this.Crop.Enabled) { $filters += "-filter:v ""crop=w=in_w-$($this.Crop.Left)-$($this.Crop.Right):h=in_h-$($this.Crop.Top)-$($this.Crop.Bottom):x=$($this.Crop.Left):y=$($this.Crop.Top)""" }
-        if ($this.Resize.Enabled) { $filters += "-vf scale=$($this.Resize.Width):$($this.Resize.Height) -sws_flags $($this.Resize.Method)" }
+        $processing = "-vf "
+        $processinglist = @()
+        if ($this.Crop.Enabled) { $processinglist += "crop=w=in_w-$($this.Crop.Left)-$($this.Crop.Right):h=in_h-$($this.Crop.Top)-$($this.Crop.Bottom):x=$($this.Crop.Left):y=$($this.Crop.Top)" }
+        if ($this.Resize.Enabled) { $processinglist += "scale=$($this.Resize.Width):$($this.Resize.Height)" }
+        if ($processinglist) { $filters += $processing + [string]::Join(",", $processinglist)}
+        if ($this.Resize.Enabled -and $($this.Resize.Method)) { $filters += "-sws_flags $($this.Resize.Method)" }
         if ($this.Enable10bit) { $filters += "-pix_fmt yuv420p10le" }
         if ($this.Tune -ne "none") { $filters += "-tune $($this.Tune)" }
 		
