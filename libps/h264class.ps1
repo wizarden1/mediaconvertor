@@ -133,5 +133,5 @@ class H264 {
 }
 
 
-$res = [H264]::new("C:\Multimedia\Programs\x264\x264_64.exe")
+#$res = [H264]::new("C:\Multimedia\Programs\x264\x264_64.exe")
 #$res = [H264]::new()

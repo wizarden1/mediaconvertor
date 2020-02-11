@@ -112,8 +112,8 @@ class H265 {
 }
 
 
-$res = [H265]::new("D:\1\ffmpeg_64.exe")
-$res.Tune = [H265tune]::animation
-$res.SourceFileAVS = "D:\1\1.m4v"
-$res.DestinationFileName = "D:\Multimedia\Programs\Utils\temp\test.hevc"
-$res.Compress()
+#$res = [H265]::new("D:\1\ffmpeg_64.exe")
+#$res.Tune = [H265tune]::animation
+#$res.SourceFileAVS = "D:\1\1.m4v"
+#$res.DestinationFileName = "D:\Multimedia\Programs\Utils\temp\test.hevc"
+#$res.Compress()

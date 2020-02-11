@@ -66,7 +66,6 @@ class MediaInfoTextTrack {
     }
 }
 
-
 class MediaInfo {
     hidden [string]$MediaInfoWrapper_path;
     hidden [string]$MediaFile;
@@ -287,4 +286,6 @@ class MediaInfo {
 
 }
 
+#$MediaInfoWrapper_path = "D:\Multimedia\Programs\Utils\tools\MediaInfoWrapper.dll"
 #$res = [MediaInfo]::new($MediaInfoWrapper_path)
+#$res.Open("D:\Multimedia\Programs\Utils\in\13.mkv")
