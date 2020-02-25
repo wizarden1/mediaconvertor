@@ -1,5 +1,7 @@
 #Requires -Version 5
-#Version 4.4.2
+#Version 4.4.4
+# 4.4.4 - Add Opus audio format
+# 4.4.3 - Remove JSON Duplicates
 # 4.4.2 - Add new audio format as source
 # 4.4.1 - Fixing if source file type the same as destination produce error
 # 4.4 - Add Import multiple JSON files
@@ -88,61 +90,62 @@ $title_json = Join-Path $in $titles_json
 #Check Prerequisite
 "Checking Prerequisite..."
 Write-Verbose "Checking $neroAacEnc_path"
-if (-not $(Test-Path -LiteralPath $neroAacEnc_path)) { Write-Host "$neroAacEnc_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $neroAacEnc_path)) { Write-Output "$neroAacEnc_path not found" -ForegroundColor Red; break }
 Write-Verbose "Checking $MediaInfoWrapper_path"
-if (-not $(Test-Path -LiteralPath $MediaInfoWrapper_path)) { Write-Host "$MediaInfoWrapper_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $MediaInfoWrapper_path)) { Write-Output "$MediaInfoWrapper_path not found" -ForegroundColor Red; break }
 Write-Verbose "Checking $ffmpeg_path"
-if (-not $(Test-Path -LiteralPath $ffmpeg_path)) { Write-Host "$ffmpeg_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $ffmpeg_path)) { Write-Output "$ffmpeg_path not found" -ForegroundColor Red; break }
 Write-Verbose "Checking $mkvmerge_path"
-if (-not $(Test-Path -LiteralPath $mkvmerge_path)) { Write-Host "$mkvmerge_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $mkvmerge_path)) { Write-Output "$mkvmerge_path not found" -ForegroundColor Red; break }
 Write-Verbose "Checking $mkvextract_path"
-if (-not $(Test-Path -LiteralPath $mkvextract_path)) { Write-Host "$mkvextract_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $mkvextract_path)) { Write-Output "$mkvextract_path not found" -ForegroundColor Red; break }
 Write-Verbose "Checking $oggdec_path"
-if (-not $(Test-Path -LiteralPath $oggdec_path)) { Write-Host "$oggdec_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $oggdec_path)) { Write-Output "$oggdec_path not found" -ForegroundColor Red; break }
 Write-Verbose "Checking $eac3to"
-if (-not $(Test-Path -LiteralPath $eac3to)) { Write-Host "$eac3to not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $eac3to)) { Write-Output "$eac3to not found" -ForegroundColor Red; break }
 Write-Verbose "Checking $faad_path"
-if (-not $(Test-Path -LiteralPath $faad_path)) { Write-Host "$faad_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $faad_path)) { Write-Output "$faad_path not found" -ForegroundColor Red; break }
 Write-Verbose "Checking $wavi"
-if (-not $(Test-Path -LiteralPath $wavi)) { Write-Host "$wavi not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $wavi)) { Write-Output "$wavi not found" -ForegroundColor Red; break }
 Write-Verbose "Checking $avs2yuv_path"
-if (-not $(Test-Path -LiteralPath $avs2yuv_path)) { Write-Host "$avs2yuv_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $avs2yuv_path)) { Write-Output "$avs2yuv_path not found" -ForegroundColor Red; break }
 
 #Check title json
 if ($titles_from_json){
     Write-Verbose "Checking $title_json"
-    if (-not $(Test-Path -LiteralPath $title_json)) { Write-Host "$title_json not found" -ForegroundColor Red; break }
+    if (-not $(Test-Path -LiteralPath $title_json)) { Write-Output "$title_json not found" -ForegroundColor Red; break }
     if ($titles_json) {
         try {
-            Write-Host "Converting $titles_json to JSON Object"
+            Write-Output "Converting $titles_json to JSON Object"
             $json = ConvertFrom-Json $(Get-Content -Raw $title_json)
         }
         catch {
-            Write-Host "$title_json syntax error" -ForegroundColor Red; break
+            Write-Output "$title_json syntax error" -ForegroundColor Red; break
         }
     } else {
         $json = @()
         Get-ChildItem -Path "$title_json*" -Include "*.json" | ForEach-Object {
             try {
-                Write-Host "Converting $($_.FullName) to JSON Object"
+                Write-Output "Converting $($_.FullName) to JSON Object"
                 $json += ConvertFrom-Json $(Get-Content -Raw $_.FullName)
             }
             catch {
-                Write-Host "Syntax error in file" -ForegroundColor Red; break
+                Write-Output "Syntax error in file" -ForegroundColor Red; break
             }
         }
     }
+    $json = $($json | Select-Object file,title -Unique)
 
     $files = Get-ChildItem $in | Where-Object { $_.Extension -eq ".$extension" }
     $err_count=0
     ForEach($file in $files) {
         Write-Verbose "Checking record in JSON for file $($file.name)"
         if ([string]::IsNullOrEmpty($($json | Where-Object {$_.file -eq $file.name}))) {
-            Write-Host "$($file.name) not found in $titles_json" -ForegroundColor Red
+            Write-Output "$($file.name) not found in $titles_json" -ForegroundColor Red
             $err_count++
         }
     }
-    if ($err_count -gt 0) { Write-Host "$title_json has $err_count errors" -ForegroundColor Red; break }
+    if ($err_count -gt 0) { Write-Output "$title_json has $err_count errors" -ForegroundColor Red; break }
     "JSON File uploaded successfuly"
 }
 
@@ -152,7 +155,7 @@ if ($titles_from_json){
 ####################################################################################
 foreach ($lib in $libs) {
     $lib_path = $(Join-Path $libs_path "$lib.ps1")
-    if (-not $(Test-Path -LiteralPath $lib_path)) { Write-Host "$lib not found" -ForegroundColor Red; break }
+    if (-not $(Test-Path -LiteralPath $lib_path)) { Write-Output "$lib not found" -ForegroundColor Red; break }
     Write-Verbose "Loading $lib.ps1"
     Invoke-Expression $(Get-Content -Raw $lib_path)
 }
@@ -217,6 +220,10 @@ function Compress-ToM4A {
             ".DTS" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
             ".MPEG Audio" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
             ".TrueHD" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+            ".Opus" {
+                      Start-Process -Wait -NoNewWindow -FilePath $ffmpeg_path -ArgumentList "-i ""$($SourceFile.FullName)"" ""$($SourceFile.FullName).flac"""
+                      Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName).flac"" ""$DestinationFile"""
+                    }
             default	{ throw "Unknown Audio Codec."; return $false }
         }
         if (-not $(Test-Path -LiteralPath $DestinationFile )) { throw "File $($SourceFile.Name) hasn't been recompressed."; return $false }
