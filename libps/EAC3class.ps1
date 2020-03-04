@@ -215,13 +215,13 @@ class EAC3 {
     }
 }
 
-$res = [EAC3]::new("D:\Multimedia\Programs\Utils\tools\eac3to\eac3to.exe", "D:\Multimedia\Programs\Utils\tools_64\ffmpeg.exe")
-$res.Verbose = $true
+#$res = [EAC3]::new("D:\Multimedia\Programs\Utils\tools\eac3to\eac3to.exe", "D:\Multimedia\Programs\Utils\tools_64\ffmpeg.exe")
+#$res.Verbose = $true
 #$res.OpenSrcFile("D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.ogg")
 #$res.OpenSrcFile("D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.Opus")
-$res.OpenSrcFile("D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.flac")
+#$res.OpenSrcFile("D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.flac")
 #$res.mode = "Dry"
-$res.DecodeAutoMode = [DecodeMode]::Auto
+#$res.DecodeAutoMode = [DecodeMode]::Auto
 #$res.Resample = [Resample]::to44100Hz
 #$res.Downmix = [Downmix]::toStereo
 #$res.Delay = -500  # +/-100 in ms
@@ -230,5 +230,5 @@ $res.DecodeAutoMode = [DecodeMode]::Auto
 #$res.Format = [Format]::flac;
 #$res.Quality = 0.6; # Nero AAC encoding quality (0.00 = lowest; 1.00 = highest)
 
-$res.DestinationFileName = "D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.m4a"
-$res.Compress()
+#$res.DestinationFileName = "D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.m4a"
+#$res.Compress()

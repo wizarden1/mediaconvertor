@@ -14,14 +14,14 @@ param (
     [switch]$Verbose = $false
 )
 #Config
-$libs = @("MediaInfoclass", "mkvmergeclass", "FFMPEGclass")
+$libs = @("MediaInfoclass", "mkvmergeclass", "FFMPEGclass", "EAC3class")
 
 #Audio
 $take_audio_from_source = $false
 $audio_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
 #$select_audio_by = @("all", @("jpn")) #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
 $RecompressMethod = "Decoder"     #"AviSynth"|"Decoder"
-#$RecompressMethod="AviSynth"     #"AviSynth"|"Decoder"
+$DecodeAutoMode = "Pattern"       #"Auto"|"Pattern"|"FFMpeg"|"Eac3to"
 
 #Video
 $video_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
@@ -183,56 +183,56 @@ function Test-Debug {
     }
 }
 
-function Compress-ToM4A {
-    param
-    (
-        [Parameter(Mandatory = $true, Position = 0)]
-        [System.IO.FileInfo]
-        [ValidateScript( { ( Test-Path $_ ) } ) ]
-        $SourceFile,
+# function Compress-ToM4A {
+#     param
+#     (
+#         [Parameter(Mandatory = $true, Position = 0)]
+#         [System.IO.FileInfo]
+#         [ValidateScript( { ( Test-Path $_ ) } ) ]
+#         $SourceFile,
 		
-        [String]
-        $DestinationFileName = "$($SourceFile.FullName).m4a"
-    )
-    begin {
-        # Check
-        if (-not $(Test-Path $eac3to)) { throw "eac3to.exe not found."; return $false }
-    }
+#         [String]
+#         $DestinationFileName = "$($SourceFile.FullName).m4a"
+#     )
+#     begin {
+#         # Check
+#         if (-not $(Test-Path $eac3to)) { throw "eac3to.exe not found."; return $false }
+#     }
 	
-    process {
-        if (-not $(Resolve-Path ([io.fileinfo]$DestinationFileName).DirectoryName | Test-Path)) { return $false }
-        if (([io.fileinfo]$DestinationFileName).Extension -eq ".m4a") { $DestinationFileExtension = ".m4a" } else { $DestinationFileExtension = "$(([io.fileinfo]$DestinationFileName).Extension).m4a" }
-        $DestinationFile = "$(Join-Path ([io.fileinfo]$DestinationFileName).DirectoryName ([io.fileinfo]$DestinationFileName).BaseName)$DestinationFileExtension"
+#     process {
+#         if (-not $(Resolve-Path ([io.fileinfo]$DestinationFileName).DirectoryName | Test-Path)) { return $false }
+#         if (([io.fileinfo]$DestinationFileName).Extension -eq ".m4a") { $DestinationFileExtension = ".m4a" } else { $DestinationFileExtension = "$(([io.fileinfo]$DestinationFileName).Extension).m4a" }
+#         $DestinationFile = "$(Join-Path ([io.fileinfo]$DestinationFileName).DirectoryName ([io.fileinfo]$DestinationFileName).BaseName)$DestinationFileExtension"
 
-        Switch ($SourceFile.Extension) {
-            ".AAC" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-            #						Start-Process -Wait -NoNewWindow -FilePath $faad_path -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"""
-            #						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
-            ".PCM" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-            #			".Vorbis" 	{
-            #						Start-Process -Wait -NoNewWindow -FilePath $oggdec_path -ArgumentList "--wavout ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" ""$($SourceFile.FullName)"""
-            #						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
-            #					}
-            ".FLAC" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-            ".AC-3" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-            ".E-AC-3" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-            ".MLP FBA" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-            ".DTS" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-            ".MPEG Audio" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-            ".TrueHD" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-            ".Opus" {
-                      Start-Process -Wait -NoNewWindow -FilePath $ffmpeg_path -ArgumentList "-i ""$($SourceFile.FullName)"" ""$($SourceFile.FullName).flac"""
-                      Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName).flac"" ""$DestinationFile"""
-                    }
-            default	{ throw "Unknown Audio Codec."; return $false }
-        }
-        if (-not $(Test-Path -LiteralPath $DestinationFile )) { throw "File $($SourceFile.Name) hasn't been recompressed."; return $false }
-    }
-    end {
-        return $true
-    }
+#         Switch ($SourceFile.Extension) {
+#             ".AAC" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+#             #						Start-Process -Wait -NoNewWindow -FilePath $faad_path -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"""
+#             #						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
+#             ".PCM" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+#             #			".Vorbis" 	{
+#             #						Start-Process -Wait -NoNewWindow -FilePath $oggdec_path -ArgumentList "--wavout ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" ""$($SourceFile.FullName)"""
+#             #						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
+#             #					}
+#             ".FLAC" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+#             ".AC-3" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+#             ".E-AC-3" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+#             ".MLP FBA" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+#             ".DTS" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+#             ".MPEG Audio" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+#             ".TrueHD" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
+#             ".Opus" {
+#                       Start-Process -Wait -NoNewWindow -FilePath $ffmpeg_path -ArgumentList "-i ""$($SourceFile.FullName)"" ""$($SourceFile.FullName).flac"""
+#                       Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName).flac"" ""$DestinationFile"""
+#                     }
+#             default	{ throw "Unknown Audio Codec."; return $false }
+#         }
+#         if (-not $(Test-Path -LiteralPath $DestinationFile )) { throw "File $($SourceFile.Name) hasn't been recompressed."; return $false }
+#     }
+#     end {
+#         return $true
+#     }
 
-}
+# }
 
 function Expand-TracksfromMKV {
     param
@@ -322,27 +322,38 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
             "DirectShowSource(""$($file.FullName)"")" | Out-File "$enctemp\videofile.avs" -Append -Encoding Ascii
             Write-Verbose "AviSynth Command Line: $wavi ""$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
             Start-Process -Wait -NoNewWindow -FilePath $wavi -ArgumentList """$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
-            Compress-ToM4A -SourceFile "$enctemp\$($medinfo.Audiotracks[0].GUID).pcm" -DestinationFileName "$enctemp\$($audiotrack.GUID).m4a"
+#            Compress-ToM4A -SourceFile "$enctemp\$($medinfo.Audiotracks[0].GUID).pcm" -DestinationFileName "$enctemp\$($audiotrack.GUID).m4a"
+            $eac3 = [EAC3]::new($eac3to, $ffmpeg_path)
+            $eac3.OpenSrcFile("$enctemp\$($medinfo.Audiotracks[0].GUID).pcm")
+            $eac3.DestinationFileName = "$enctemp\$($audiotrack.GUID).m4a"
+            $eac3.Compress()
             if ($errorcount -gt 0) { continue Main }
             $medinfo.Audiotracks[0].Custom01 = "$($medinfo.Audiotracks[0].GUID).m4a"
             $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
             $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
             $audiotrack.Format = $medinfoAud.Audiotracks[0].Format
             $medinfoAud.Close()
+            $eac3 = $null
         }
         "Decoder" {
             Foreach ($audiotrack in $medinfo.Audiotracks) {
-                Write-Verbose "Decoder Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+                Write-Verbose "Extractor Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
                 Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
                 $audiotrack.Custom01 = "$($audiotrack.GUID).$($audiotrack.Format)"
                 if (-not $take_audio_from_source) {
-                    Compress-ToM4A -SourceFile "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)" -DestinationFileName "$enctemp\$($audiotrack.GUID).m4a"
+                    $eac3 = [EAC3]::new($eac3to, $ffmpeg_path)
+                    $eac3.DecodeAutoMode = $DecodeAutoMode
+                    $eac3.OpenSrcFile("$enctemp\$($audiotrack.GUID).$($audiotrack.Format)")
+                    $eac3.DestinationFileName = "$enctemp\$($audiotrack.GUID).m4a"
+                    $eac3.Compress()
+#                    Compress-ToM4A -SourceFile "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)" -DestinationFileName "$enctemp\$($audiotrack.GUID).m4a"
                     if ($errorcount -gt 0) { continue Main }
                     $audiotrack.Custom01 = "$($audiotrack.GUID).m4a"
                     $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
                     $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
                     $audiotrack.Format = $medinfoAud.Audiotracks[0].Format
                     $medinfoAud.Close()
+                    $eac3 = $null
                 }
             }
         }
