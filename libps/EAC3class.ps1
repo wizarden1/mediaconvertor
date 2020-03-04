@@ -1,5 +1,12 @@
 ﻿#Requires -Version 5
 
+enum DecodeMode {
+    Auto
+    Pattern
+    FFMpeg
+    Eac3to
+}
+
 # resample audio to "44100", "48000" or "96000" Hz
 enum Resample {
     none
@@ -31,11 +38,12 @@ class EAC3 {
     [System.Diagnostics.ProcessPriorityClass]$ProcessPriority = [System.Diagnostics.ProcessPriorityClass]::Idle;
 
     hidden $inFormats = @(".AAC",".PCM",".FLAC",".AC-3",".E-AC-3",".MLP FBA",".DTS",".MPEG Audio",".TrueHD");
+    hidden $inFormatsPattern = @(".OPUS");
 
     hidden [string]$eac3to_path;
     hidden [String]$ffmpeg_path;
 
-    [bool]$UseFFMpegforDecode = $false;
+    [DecodeMode]$DecodeAutoMode = [DecodeMode]::Pattern;
 
     [Resample]$Resample = [Resample]::none;
     [Downmix]$Downmix = [Downmix]::none;
@@ -120,63 +128,100 @@ class EAC3 {
         if ($filters.Length -gt 0) { $filterLine = [string]::Join(" ", $filters) }
         Write-Verbose "Filter CLI: $($filterLine)"
 
-        # Encoding
-        if ($this.UseFFMpegforDecode) {
-            # Decode file
-            $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $startInfo.Arguments = "-i ""$($this.SourceFile.FullName)"" ""$($this.SourceFile.FullName).flac"""
-            $startInfo.FileName = $this.ffmpeg_path
-            Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
-            if ($this.mode -ne "Dry") {
-                $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
-                $startInfo.UseShellExecute = $false
-                $process = New-Object System.Diagnostics.Process
-                $process.StartInfo = $startInfo
-                $process.Start() | Out-Null
-                $process.PriorityClass = $this.ProcessPriority
-                $process.WaitForExit()
-                if ($(Get-ChildItem $DestinationFile).Length -eq 0) { throw "File $($this.SourceFile.Name) hasn't been compressed." }
+        # Decoding
+        $tempfile = ""
+        switch ($this.DecodeAutoMode) {
+            Auto {
+                if ($this.inFormats -contains $this.SourceFile.Extension) {
+                    $tempfile = """$($this.SourceFile.FullName)"""
+                } else {
+                    $tempfile = """$($this.SourceFile.FullName).flac"""
+                    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+                    $startInfo.Arguments = "-y -i ""$($this.SourceFile.FullName)"" $tempfile"
+                    $startInfo.FileName = $this.ffmpeg_path
+                    Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
+                    if ($this.mode -ne "Dry") {
+                        $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
+                        $startInfo.UseShellExecute = $false
+                        $process = New-Object System.Diagnostics.Process
+                        $process.StartInfo = $startInfo
+                        $process.Start() | Out-Null
+                        $process.PriorityClass = $this.ProcessPriority
+                        $process.WaitForExit()
+                        if ($(Get-ChildItem $($this.SourceFile.FullName).flac).Length -eq 0) { throw "File $($this.SourceFile.Name) hasn't been compressed." }
+                    }
+                }
             }
-            # Encode file
-            $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $startInfo.Arguments = """$($this.SourceFile.FullName).flac"" ""$($DestinationFile)"" $filterLine"
-            $startInfo.FileName = $this.eac3to_path
-            Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
-            if ($this.mode -ne "Dry") {
-                $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
-                $startInfo.UseShellExecute = $false
-                $process = New-Object System.Diagnostics.Process
-                $process.StartInfo = $startInfo
-                $process.Start() | Out-Null
-                $process.PriorityClass = $this.ProcessPriority
-                $process.WaitForExit()
-                if ($(Get-ChildItem $DestinationFile).Length -eq 0) { throw "File $($this.SourceFile.Name) hasn't been compressed." }
+            Pattern {
+                if ($this.inFormats -contains $this.SourceFile.Extension) {
+                    $tempfile = """$($this.SourceFile.FullName)"""
+                } elseif ($this.inFormatsPattern -contains $this.SourceFile.Extension) {
+                    $tempfile = """$($this.SourceFile.FullName).flac"""
+                    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+                    $startInfo.Arguments = "-y -i ""$($this.SourceFile.FullName)"" $tempfile"
+                    $startInfo.FileName = $this.ffmpeg_path
+                    Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
+                    if ($this.mode -ne "Dry") {
+                        $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
+                        $startInfo.UseShellExecute = $false
+                        $process = New-Object System.Diagnostics.Process
+                        $process.StartInfo = $startInfo
+                        $process.Start() | Out-Null
+                        $process.PriorityClass = $this.ProcessPriority
+                        $process.WaitForExit()
+                        if ($(Get-ChildItem $($this.SourceFile.FullName).flac).Length -eq 0) { throw "File $($this.SourceFile.Name) hasn't been compressed." }
+                    }
+                } else { throw "Unsupported File format. Use FFMpeg for Decode." }
             }
-        } else {
-            if ($this.inFormats -notcontains $this.SourceFile.Extension) { throw "Unsupported File format. Use FFMpeg for Decode." }
-            $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $startInfo.Arguments = """$($this.SourceFile.FullName)"" ""$($DestinationFile)"" $filterLine"
-            $startInfo.FileName = $this.eac3to_path
-            Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
-            if ($this.mode -ne "Dry") {
-                $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
-                $startInfo.UseShellExecute = $false
-                $process = New-Object System.Diagnostics.Process
-                $process.StartInfo = $startInfo
-                $process.Start() | Out-Null
-                $process.PriorityClass = $this.ProcessPriority
-                $process.WaitForExit()
-                if ($(Get-ChildItem $DestinationFile).Length -eq 0) { throw "File $($this.SourceFile.Name) hasn't been compressed." }
+            FFMpeg {
+                $tempfile = """$($this.SourceFile.FullName).flac"""
+                $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+                $startInfo.Arguments = "-y -i ""$($this.SourceFile.FullName)"" $tempfile"
+                $startInfo.FileName = $this.ffmpeg_path
+                Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
+                if ($this.mode -ne "Dry") {
+                    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
+                    $startInfo.UseShellExecute = $false
+                    $process = New-Object System.Diagnostics.Process
+                    $process.StartInfo = $startInfo
+                    $process.Start() | Out-Null
+                    $process.PriorityClass = $this.ProcessPriority
+                    $process.WaitForExit()
+                    if ($(Get-ChildItem $($this.SourceFile.FullName).flac).Length -eq 0) { throw "File $($this.SourceFile.Name) hasn't been compressed." }
+                }
+            }
+            Eac3to { 
+                if ($this.inFormats -notcontains $this.SourceFile.Extension) { throw "Unsupported File format. Use FFMpeg for Decode." }
+                $tempfile = """$($this.SourceFile.FullName)"""
             }
         }
+
+        # Encoding
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.Arguments = "$tempfile ""$($DestinationFile)"" $filterLine"
+        $startInfo.FileName = $this.eac3to_path
+        Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
+        if ($this.mode -ne "Dry") {
+            $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
+            $startInfo.UseShellExecute = $false
+            $process = New-Object System.Diagnostics.Process
+            $process.StartInfo = $startInfo
+            $process.Start() | Out-Null
+            $process.PriorityClass = $this.ProcessPriority
+            $process.WaitForExit()
+            if ($(Get-ChildItem $DestinationFile).Length -eq 0) { throw "File $($this.SourceFile.Name) hasn't been compressed." }
+        }
+
     }
 }
 
-#$res = [EAC3]::new("D:\Multimedia\Programs\Utils\tools\eac3to\eac3to.exe", "D:\Multimedia\Programs\Utils\tools_64\ffmpeg.exe")
-#$res.Verbose = $true
-#$res.OpenSrcFile("D:\1\2\audio.flac")
+$res = [EAC3]::new("D:\Multimedia\Programs\Utils\tools\eac3to\eac3to.exe", "D:\Multimedia\Programs\Utils\tools_64\ffmpeg.exe")
+$res.Verbose = $true
+#$res.OpenSrcFile("D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.ogg")
+#$res.OpenSrcFile("D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.Opus")
+$res.OpenSrcFile("D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.flac")
 #$res.mode = "Dry"
-#$res.UseFFMpegforDecode = $true;
+$res.DecodeAutoMode = [DecodeMode]::Auto
 #$res.Resample = [Resample]::to44100Hz
 #$res.Downmix = [Downmix]::toStereo
 #$res.Delay = -500  # +/-100 in ms
@@ -185,5 +230,5 @@ class EAC3 {
 #$res.Format = [Format]::flac;
 #$res.Quality = 0.6; # Nero AAC encoding quality (0.00 = lowest; 1.00 = highest)
 
-#$res.DestinationFileName = "D:\1\2\test.m4a"
-#$res.Compress()
+$res.DestinationFileName = "D:\Multimedia\Programs\Utils\temp\e46b38c2-fe85-4a43-880b-3e8041175b1d.m4a"
+$res.Compress()
