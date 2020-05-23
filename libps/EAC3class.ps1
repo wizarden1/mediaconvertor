@@ -82,7 +82,7 @@ class EAC3 {
 
     [void]OpenSrcFile ([string]$FileName) {
         if ($this.Verbose) { $VerbosePreference = "continue" }
-        Write-Verbose "Open File"
+        Write-Verbose "Open File: $($FileName)"
         if (Test-Path $FileName -PathType Leaf) { $this.SourceFile = $FileName; } else { throw "ERROR: $FileName not found." }
     }
 

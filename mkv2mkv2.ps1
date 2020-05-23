@@ -1,5 +1,15 @@
 #Requires -Version 5
-#Version 4.4.4
+#Version 4.8.2
+# 4.8.2 - Fix name of track with " sign
+# 4.8.1 - Add Selection audio languages
+# 4.8 - Full rebuild process of recompress
+# 4.7.1 - Add error cheking
+# 4.7 - Add Custom Filter and Modifier
+# 4.6 - Add Deinterlace Filter
+# 4.5 - Use External subtitles with JSON source
+# 4.4.7 - BugFix with vfr input video
+# 4.4.6 - Add Colors to output
+# 4.4.5 - Add removing Read Only Attribute
 # 4.4.4 - Add Opus audio format
 # 4.4.3 - Remove JSON Duplicates
 # 4.4.2 - Add new audio format as source
@@ -18,41 +28,45 @@ $libs = @("MediaInfoclass", "mkvmergeclass", "FFMPEGclass", "EAC3class")
 
 #Audio
 $take_audio_from_source = $false
-$audio_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
-#$select_audio_by = @("all", @("jpn")) #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
-$RecompressMethod = "Decoder"     #"AviSynth"|"Decoder"
-$DecodeAutoMode = "Pattern"       #"Auto"|"Pattern"|"FFMpeg"|"Eac3to"
+$set_audio_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
+$select_audio_by = @("all", @("jpn"))     #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
+$RecompressMethod = "Decoder"                  #"AviSynth"|"Decoder"
+$DecodeAutoMode = "Pattern"                    #"Auto"|"Pattern"|"FFMpeg"|"Eac3to"
 
 #Video
 $video_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
-$tune = "animation" #tune:film,animation,grain,psnr,ssim,fastdecode,touhou
-$DecompressSource = "Direct"	#"FFVideoSource"|"DirectShowSource"|"Direct"
+$tune = "animation"                        #tune:film,animation,grain,psnr,ssim,fastdecode,touhou
+$DecompressSource = "Direct"	           #"FFVideoSource"|"DirectShowSource"|"Direct"
 $Copy_Chapters = $true
 $quantanizer = 24
-$preset = "medium"		#ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
+$preset = "medium"		           #ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
 #$preset = "ultrafast"
-$codec = "libx265"                #libx264,libx265
+$codec = "libx265"                         #libx264,libx265
 
 #Subtitles
 $Copy_Subtitles = $true
-$Sub_languages = @("rus") #@("lng1","lng2","lng3",...)
+$Sub_languages = @("rus")                  #@("lng1","lng2","lng3",...)
 
 #Filters
-$crop = @($false, 40, 0, 40, 0) #crop:enabled,left,top,right,bottom
-#$resize=@($true,1280,720,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
-#$resize=@($true,1280,960,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
-$resize = @($false, 0, 0, "lanczos", "") #resize:enabled,width,height,method,", additional parametrs"
-#$resize=@($true,1024,768,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
-#$resize=@($true,1280,544,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
-#$pulldown=@($false,"")	#pulldown:enabled,"step,offset1[,...]"
+$crop = @($false, 0, 22, 0, 22)            #crop:enabled,left,top,right,bottom
+#$resize=@($true,1280,720,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
+#$resize=@($true,1280,960,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
+$resize = @($false, 0, 0, "lanczos", "")   #resize:enabled,width,height,method,", additional parametrs"
+#$resize=@($true,1024,768,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
+#$resize=@($true,1280,544,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
+#$pulldown=@($false,"")	                   #pulldown:enabled,"step,offset1[,...]"
+$deinterlace = @($false, "send_frame", "auto", "all") #(send_frame, send_field, send_frame_nospatial, send_field_nospatial), (tff, bff, auto), (all, interlaced)
+$CustomFilter = ""
+
+#Modifiers
+$vsync = "passthrough"                     #passthrough, cfr, vfr, drop, auto     #Required for vfr video
+$CustomModifier = ""
 
 #Advanced Config
 $del_original = $true
-$titles_from_json = $true  #Use title of series from json
-$titles_json = "" #"title.json" #[{"file": "Overlord - 01 [Beatrice-Raws].mkv","title": "End and Beginning"},{...}]
-#$debug=$false
-#$DebugPreference="Continue"  #Enable Debug mode
-#$VerbosePreference = "continue"
+$use_json = $false                         #Use title of series from json
+$json_file = ""                          #"title.json" #[{"file": "Overlord - 01 [Beatrice-Raws].mkv","subtitle_file": "Overlord - 01 [Beatrice-Raws].ass","title": "End and Beginning"},{...}]
+#$VerbosePreference = "Continue"           #Enable Verbose mode
 $shutdown = $false
 $extension = "MKV"
 
@@ -85,68 +99,96 @@ $faad_path = Join-Path $tools_path "faad.exe"
 $wavi = Join-Path $tools_path "Wavi.exe"
 $avs2yuv_path = Join-Path $toolsx64_path "avs2yuv\avs2yuv64.exe"
 $ffmpeg_path = Join-Path $toolsx64_path "ffmpeg.exe"
-$title_json = Join-Path $in $titles_json
+$title_json = Join-Path $in $json_file
 
 #Check Prerequisite
-"Checking Prerequisite..."
+Write-Host "Checking Prerequisite..." -ForegroundColor Green
 Write-Verbose "Checking $neroAacEnc_path"
-if (-not $(Test-Path -LiteralPath $neroAacEnc_path)) { Write-Output "$neroAacEnc_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $neroAacEnc_path)) { Write-Error "$neroAacEnc_path not found"; break }
 Write-Verbose "Checking $MediaInfoWrapper_path"
-if (-not $(Test-Path -LiteralPath $MediaInfoWrapper_path)) { Write-Output "$MediaInfoWrapper_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $MediaInfoWrapper_path)) { Write-Error "$MediaInfoWrapper_path not found"; break }
 Write-Verbose "Checking $ffmpeg_path"
-if (-not $(Test-Path -LiteralPath $ffmpeg_path)) { Write-Output "$ffmpeg_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $ffmpeg_path)) { Write-Error "$ffmpeg_path not found"; break }
 Write-Verbose "Checking $mkvmerge_path"
-if (-not $(Test-Path -LiteralPath $mkvmerge_path)) { Write-Output "$mkvmerge_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $mkvmerge_path)) { Write-Error "$mkvmerge_path not found"; break }
 Write-Verbose "Checking $mkvextract_path"
-if (-not $(Test-Path -LiteralPath $mkvextract_path)) { Write-Output "$mkvextract_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $mkvextract_path)) { Write-Error "$mkvextract_path not found"; break }
 Write-Verbose "Checking $oggdec_path"
-if (-not $(Test-Path -LiteralPath $oggdec_path)) { Write-Output "$oggdec_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $oggdec_path)) { Write-Error "$oggdec_path not found"; break }
 Write-Verbose "Checking $eac3to"
-if (-not $(Test-Path -LiteralPath $eac3to)) { Write-Output "$eac3to not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $eac3to)) { Write-Error "$eac3to not found"; break }
 Write-Verbose "Checking $faad_path"
-if (-not $(Test-Path -LiteralPath $faad_path)) { Write-Output "$faad_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $faad_path)) { Write-Error "$faad_path not found"; break }
 Write-Verbose "Checking $wavi"
-if (-not $(Test-Path -LiteralPath $wavi)) { Write-Output "$wavi not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $wavi)) { Write-Error "$wavi not found"; break }
 Write-Verbose "Checking $avs2yuv_path"
-if (-not $(Test-Path -LiteralPath $avs2yuv_path)) { Write-Output "$avs2yuv_path not found" -ForegroundColor Red; break }
+if (-not $(Test-Path -LiteralPath $avs2yuv_path)) { Write-Error "$avs2yuv_path not found"; break }
 
 #Check title json
-if ($titles_from_json){
+if ($use_json){
     Write-Verbose "Checking $title_json"
-    if (-not $(Test-Path -LiteralPath $title_json)) { Write-Output "$title_json not found" -ForegroundColor Red; break }
-    if ($titles_json) {
+    if (-not $(Test-Path -LiteralPath $title_json)) { Write-Error "$title_json not found"; break }
+    if ($json_file) {
         try {
-            Write-Output "Converting $titles_json to JSON Object"
+            Write-Host "Converting $json_file to JSON Object"
             $json = ConvertFrom-Json $(Get-Content -Raw $title_json)
         }
         catch {
-            Write-Output "$title_json syntax error" -ForegroundColor Red; break
+            Write-Error "$title_json syntax error"; break
         }
     } else {
         $json = @()
         Get-ChildItem -Path "$title_json*" -Include "*.json" | ForEach-Object {
             try {
-                Write-Output "Converting $($_.FullName) to JSON Object"
+                Write-Host "Converting $($_.FullName) to JSON Object"
                 $json += ConvertFrom-Json $(Get-Content -Raw $_.FullName)
             }
             catch {
-                Write-Output "Syntax error in file" -ForegroundColor Red; break
+                Write-Error "Syntax error in file"; break
             }
         }
     }
-    $json = $($json | Select-Object file,title -Unique)
+    $json = $($json | Select-Object file,title,subtitle_file,chapter_file -Unique)
 
     $files = Get-ChildItem $in | Where-Object { $_.Extension -eq ".$extension" }
     $err_count=0
     ForEach($file in $files) {
         Write-Verbose "Checking record in JSON for file $($file.name)"
-        if ([string]::IsNullOrEmpty($($json | Where-Object {$_.file -eq $file.name}))) {
-            Write-Output "$($file.name) not found in $titles_json" -ForegroundColor Red
+        $index = [Array]::IndexOf($json.file, $file.name)
+        if ($index -ge 0) {
+            if ($json[$index].subtitle_file) {
+                Write-Verbose "Subtitles for $($file.name) will be used from $($json[$index].subtitle_file)"
+                if (Test-Path -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].subtitle_file)) {
+                    $subtitle_file = Get-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].subtitle_file)
+                    if ($subtitle_file.IsReadOnly) {
+                        $subtitle_file.Set_IsReadOnly($False)
+                        Write-Warning "Removing ReadOnly Attribute from $($subtitle_file.Name)"
+                    }
+                } else {
+                    Write-Error "$($json[$index].subtitle_file) not found in $($file.DirectoryName)"
+                    $err_count++
+                }               
+            }
+            if ($json[$index].chapter_file) {
+                Write-Verbose "Subtitles for $($file.name) will be used from $($json[$index].chapter_file)"
+                if (Test-Path -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file)) {
+                    $chapter_file = Get-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file)
+                    if ($chapter_file.IsReadOnly) {
+                        $chapter_file.Set_IsReadOnly($False)
+                        Write-Warning "Removing ReadOnly Attribute from $($chapter_file.Name)"
+                    }
+                } else {
+                    Write-Error "$($json[$index].chapter_file) not found in $($file.DirectoryName)"
+                    $err_count++
+                }               
+            }
+        } else {
+            Write-Error "$($file.name) not found in $json_file"
             $err_count++
         }
     }
-    if ($err_count -gt 0) { Write-Output "$title_json has $err_count errors" -ForegroundColor Red; break }
-    "JSON File uploaded successfuly"
+    if ($err_count -gt 0) { Write-Error "$title_json has $err_count errors"; break }
+    Write-Host "JSON File uploaded successfuly" -ForegroundColor Green
 }
 
 # Include
@@ -155,166 +197,174 @@ if ($titles_from_json){
 ####################################################################################
 foreach ($lib in $libs) {
     $lib_path = $(Join-Path $libs_path "$lib.ps1")
-    if (-not $(Test-Path -LiteralPath $lib_path)) { Write-Output "$lib not found" -ForegroundColor Red; break }
+    if (-not $(Test-Path -LiteralPath $lib_path)) { Write-Error "$lib not found"; break }
     Write-Verbose "Loading $lib.ps1"
     Invoke-Expression $(Get-Content -Raw $lib_path)
-}
-
-####################################################################################
-##################################### Functions ####################################
-####################################################################################
-
-function Test-Debug {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $false)]
-        [switch]$IgnorePSBoundParameters
-        ,
-        [Parameter(Mandatory = $false)]
-        [switch]$IgnoreDebugPreference
-        ,
-        [Parameter(Mandatory = $false)]
-        [switch]$IgnorePSDebugContext
-    )
-    process {
-        ((-not $IgnoreDebugPreference.IsPresent) -and ($DebugPreference -ne "SilentlyContinue")) -or
-        ((-not $IgnorePSBoundParameters.IsPresent) -and $PSBoundParameters.Debug.IsPresent) -or
-        ((-not $IgnorePSDebugContext.IsPresent) -and ($PSDebugContext))
-    }
-}
-
-# function Compress-ToM4A {
-#     param
-#     (
-#         [Parameter(Mandatory = $true, Position = 0)]
-#         [System.IO.FileInfo]
-#         [ValidateScript( { ( Test-Path $_ ) } ) ]
-#         $SourceFile,
-		
-#         [String]
-#         $DestinationFileName = "$($SourceFile.FullName).m4a"
-#     )
-#     begin {
-#         # Check
-#         if (-not $(Test-Path $eac3to)) { throw "eac3to.exe not found."; return $false }
-#     }
-	
-#     process {
-#         if (-not $(Resolve-Path ([io.fileinfo]$DestinationFileName).DirectoryName | Test-Path)) { return $false }
-#         if (([io.fileinfo]$DestinationFileName).Extension -eq ".m4a") { $DestinationFileExtension = ".m4a" } else { $DestinationFileExtension = "$(([io.fileinfo]$DestinationFileName).Extension).m4a" }
-#         $DestinationFile = "$(Join-Path ([io.fileinfo]$DestinationFileName).DirectoryName ([io.fileinfo]$DestinationFileName).BaseName)$DestinationFileExtension"
-
-#         Switch ($SourceFile.Extension) {
-#             ".AAC" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-#             #						Start-Process -Wait -NoNewWindow -FilePath $faad_path -ArgumentList """$($SourceFile.FullName)"" ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"""
-#             #						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
-#             ".PCM" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-#             #			".Vorbis" 	{
-#             #						Start-Process -Wait -NoNewWindow -FilePath $oggdec_path -ArgumentList "--wavout ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" ""$($SourceFile.FullName)"""
-#             #						Start-Process -Wait -NoNewWindow -FilePath $neroAacEnc_path -ArgumentList "-if ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).wav"" -of ""$(Join-Path $OutputDir.FullName $SourceFile.BaseName).m4a"" -ignorelength"
-#             #					}
-#             ".FLAC" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-#             ".AC-3" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-#             ".E-AC-3" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-#             ".MLP FBA" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-#             ".DTS" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-#             ".MPEG Audio" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-#             ".TrueHD" { Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName)"" ""$DestinationFile""" }
-#             ".Opus" {
-#                       Start-Process -Wait -NoNewWindow -FilePath $ffmpeg_path -ArgumentList "-i ""$($SourceFile.FullName)"" ""$($SourceFile.FullName).flac"""
-#                       Start-Process -Wait -NoNewWindow -FilePath $eac3to -ArgumentList """$($SourceFile.FullName).flac"" ""$DestinationFile"""
-#                     }
-#             default	{ throw "Unknown Audio Codec."; return $false }
-#         }
-#         if (-not $(Test-Path -LiteralPath $DestinationFile )) { throw "File $($SourceFile.Name) hasn't been recompressed."; return $false }
-#     }
-#     end {
-#         return $true
-#     }
-
-# }
-
-function Expand-TracksfromMKV {
-    param
-    (
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
-        [ValidateScript( { ( $_ -ne $nul) } ) ]
-        $mediainfo,
-
-        [System.IO.DirectoryInfo]
-        [ValidateScript( { ( Test-Path $_ ) } ) ]
-        $OutputDir = $mediainfo.DirectoryName
-
-    )
-    begin { 
-        if (-not $(Test-Path $mkvextract_path)) { throw "mkvextract.exe not found."; return }
-    }
-    process {
-        # Video
-        Foreach ($videotrack in $mediainfo.VideoTracks) {
-            "Extracting Video track"
-            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$($mediainfo.FullName)"" $($videotrack.StreamOrder):""$OutputDir\$($videotrack.UniqueID).$($videotrack.Format)"""
-            "Extracting Timecode for Video track"
-            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$($mediainfo.FullName)"" $($videotrack.StreamOrder):""$OutputDir\$($videotrack.UniqueID).timecode"""
-        }
-        # Audio
-        Foreach ($audiotrack in $mediainfo.AudioTracks) {
-            "Extracting Audio track"
-            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$($mediainfo.FullName)"" $($audiotrack.StreamOrder):""$OutputDir\$($audiotrack.UniqueID).$($audiotrack.Format)"""
-        }
-        # Chapters
-        if ($mediainfo.Chapters) {
-            "Extracting Chapters"
-            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "chapters ""$($mediainfo.FullName)"" -r ""$OutputDir\chapters.xml"""
-        }
-    }
-    end {
-    }
 }
 
 ####################################################################################
 ################################### Main Program ###################################
 ####################################################################################
 # Clean Temp
-Remove-Item $enctemp\*
+Remove-Item $enctemp\* -Force
 
 $files = Get-ChildItem $in | Where-Object { $_.Extension -eq ".$extension" }
-Write-Output "Files will be converted:"
-if ($null -eq $files) { Write-Output "No files to convert" } else { $files | ForEach-Object { Write-Output $_.BaseName } }
+Write-Host "Files will be converted:" -ForegroundColor Green
+if ($null -eq $files) { Write-Host "No files to convert" } else { $files | ForEach-Object { Write-Host $_.BaseName } }
+$files | ForEach {
+  if ($_.IsReadOnly) {
+    $_.Set_IsReadOnly($False)
+    Write-Warning "Removing ReadOnly Attribute from $($_.Name)"
+  }
+}
+$totalErrorsCount = 0
+$counter = 0
 :Main Foreach ($file in $files) {
+    $counter++
     $errorcount = 0
+    if ($use_json) {$index = [Array]::IndexOf($json.file, $file.name)}
     if (-not $(Test-Path -LiteralPath $file.FullName)) { continue Main }
     # Process Commands
     if ($(Test-Path -LiteralPath $(Join-Path $in "terminate"))) {
         Remove-Item $(Join-Path $in "terminate")
-        "Terminate File Found, Exiting"
+        Write-Host "Terminate File Found, Exiting" -ForegroundColor Green
         break
     }
-    # Method 1
-    #	New-HardLink $enctemp\temp$extension.$extension $($file.FullName)
-    #	Start-Process -Wait -NoNewWindow -FilePath "fsutil" -ArgumentList "hardlink create ""$enctemp\temp$extension.$extension"" ""$($file.FullName)"""
 
-    # Method 2
-    "Copying file $($file.Name)"
+    if ($(Get-ChildItem $enctemp).Count -gt 0) { Write-Verbose "Cleaning $enctemp"; Remove-Item $enctemp\* }
+
+#    Write-Progress -Id 0 -Activity "Encoding File $counter/$($files.count-1)" -Status "$($file.Name)"
+    Write-Host "Encoding File $counter/$($files.count)" -ForegroundColor Green
+    Write-Host "Use Title form JSON: $use_json" -ForegroundColor Green
+    Write-Host "$($file.Name)" -ForegroundColor Cyan
+    Write-Host "Step 1-1: Copying file $($file.Name)" -ForegroundColor Green
+#    Write-Progress -Id 1 -ParentId 0 "Step 1: Copying file $($file.Name)"
+    Write-Verbose "File Source: $($file.fullname)"
+    Write-Verbose "File Destination: $enctemp\temp$extension.$extension"
     $file | Copy-Item -destination "$enctemp\temp$extension.$extension"
-    if ($(Test-Path -LiteralPath "$enctemp\temp$extension.$extension")) { "File copied succesfully" } else { break }
+    if ($(Test-Path -LiteralPath "$enctemp\temp$extension.$extension")) { Write-Host "File copied succesfully" } else { Write-Error "File copy failed"; $errorcount++ }
+
+    if ($use_json) {
+        $subtitle_file = $json[$index].subtitle_file
+        if ($($index -ge 0) -and $subtitle_file) {
+            Write-Host "Step 1-2: Copying Subtitle file $($json[$index].subtitle_file)" -ForegroundColor Green
+            $subtitle_file_src = Get-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].subtitle_file)
+            $subtitle_file = "$([guid]::NewGuid().guid)$($subtitle_file_src.Extension)"
+            Write-Verbose "File Source: $($subtitle_file_src.fullname)"
+            Write-Verbose "File Destination: $(Join-Path -Path $enctemp -ChildPath $subtitle_file)"
+            $subtitle_file_src | Copy-Item -Destination "$enctemp\$subtitle_file"
+            if ($(Test-Path -LiteralPath $(Join-Path -Path $enctemp -ChildPath $subtitle_file))) { Write-Host "Subtitle file copied succesfully" } else { Write-Error "Subtitle file copy failed"; $errorcount++ }
+        }
+    }
+
+    if ($use_json) {
+        $chapter_file = $json[$index].chapter_file
+        if ($($index -ge 0) -and $chapter_file) {
+            Write-Host "Step 1-3: Copying Chapter file $($json[$index].chapter_file)" -ForegroundColor Green
+            $chapter_file_src = Get-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file)
+            $chapter_file = "$([guid]::NewGuid().guid)$($chapter_file_src.Extension)"
+            Write-Verbose "File Source: $($chapter_file_src.fullname)"
+            Write-Verbose "File Destination: $(Join-Path -Path $enctemp -ChildPath $chapter_file)"
+            $chapter_file_src | Copy-Item -Destination "$enctemp\$chapter_file"
+            if ($(Test-Path -LiteralPath $(Join-Path -Path $enctemp -ChildPath $chapter_file))) { Write-Host "Chapter file copied succesfully" } else { Write-Error "Chapter file copy failed"; $errorcount++ }
+        }
+    }
 
     # Load Media Info
     $medinfo = [MediaInfo]::new($MediaInfoWrapper_path)
     $medinfo.open("$enctemp\temp$extension.$extension")
     Write-Verbose "MediaInfo: $(ConvertTo-Json $medinfo)"
 
-    # Audio Encoding
-    #  Selecting Audio tracks
-    #	Foreach ($audiotrack in $medinfo.Audiotracks) {
-    #		Switch ($select_audio_by[0])
-    #		{
-    #			"language" 	{if ($select_audio_by[1] -contains $audiotrack.Language){$audiotracks += $audiotrack}}
-    #			"trackid" 	{if ($select_audio_by[1] -contains $audiotrack.StreamKindID){$audiotracks += $audiotrack}}
-    #			default	{$audiotracks += $audiotrack}
-    #		}
-    #	}
+# Extracting
+    #  Extracting Video
+    if (($DecompressSource -eq "FFVideoSource") -or ($DecompressSource -eq "DirectShowSource")) {
+        Write-Host "Step 2-1: Extracting Videotrack... Skipped, Decompress method $DecompressSource is Used" -ForegroundColor Green
+    } else {
+        $counterInternal = 0
+        Foreach ($videotrack in $medinfo.Videotracks) {
+            $counterInternal++
+#            Write-Progress -Id 1 -ParentId 0 "Step 2-1: Extracting Videotrack... $counterInternal/$($medinfo.Videotracks.Count)"
+            Write-Host "Step 2-1: Extracting Videotrack... $counterInternal/$($medinfo.Videotracks.Count)" -ForegroundColor Green
+#            Write-Verbose "mkvextract Command Line: $mkvmerge_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+#            Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+            Write-Verbose "mkvextract Command Line: $mkvmerge_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.StreamOrder) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+            Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.StreamOrder) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+            if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.GUID).$($videotrack.Format).src")) { Write-Error "Step 2-1: Extracting Videotrack file $($videotrack.GUID).$($videotrack.Format).src failed"; $errorcount++ }
+        }
+    }
 
+    #  Extracting Audio
+    if ($RecompressMethod -eq "AviSynth") {
+        Write-Host "Step 2-2: Extracting Audiotrack... Skipped, Recompress method AviSynth is Used" -ForegroundColor Green
+    } else {
+        $counterInternal = 0
+        Foreach ($audiotrack in $medinfo.Audiotracks) {
+            $counterInternal++
+#            Write-Progress -Id 1 -ParentId 0 "Step 2-2: Extracting Audiotrack... $counterInternal/$($medinfo.Audiotracks.Count)"
+            Write-Host "Step 2-2: Extracting Audiotrack... $counterInternal/$($medinfo.Audiotracks.Count)" -ForegroundColor Green
+#            Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+#            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+            Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.StreamOrder):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.StreamOrder):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+            if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)")) { Write-Error "Step 2-2: Extracting Audiotrack file $($audiotrack.GUID).$($audiotrack.Format) failed"; $errorcount++ }
+        }
+    }
+
+    #  Extracting Timecode
+    $counterInternal = 0
+    Foreach ($videotrack in $medinfo.Videotracks) {
+        $counterInternal++
+#        Write-Progress -Id 1 -ParentId 0 "Step 2-3: Extracting timecodes... $counterInternal/$($medinfo.Videotracks.Count)"
+        Write-Host "Step 2-3: Extracting timecodes... $counterInternal/$($medinfo.Videotracks.Count)" -ForegroundColor Green
+#        Write-Verbose "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
+#        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
+        Write-Verbose "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.StreamOrder):""$enctemp\$($videotrack.GUID).timecode"""
+        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.StreamOrder):""$enctemp\$($videotrack.GUID).timecode"""
+        if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.GUID).timecode")) { Write-Error "Step 2-3: Extracting timecode file $($videotrack.GUID).timecode failed"; $errorcount++ }
+        # Replace Title
+        if ($use_json) {
+            Write-Verbose "Title looking for in JSON: $($file.Name)"
+            Write-Host "Step 2-3: Replace title from JSON for $($file.Name): $($($json | Where-Object {$_.file -eq $($file.Name)}).title)"
+            $videotrack.Title = $($json | Where-Object {$_.file -eq $($file.Name)}).title
+        }
+    }
+
+    #  Extracting Chapters
+#    if ($Copy_Chapters -and $medinfo.Chapters) {
+    if ($medinfo.Chapters) {
+#        Write-Progress -Id 1 -ParentId 0 "Step 2-4: Extracting chapters..."
+        Write-Host "Step 2-4: Extracting chapters..." -ForegroundColor Green
+        Write-Verbose "mkvextract Command Line: $mkvextract_path chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
+        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
+        if (-not $(Test-Path -LiteralPath "$enctemp\chapters.xml")) { Write-Error "Step 2-4: Extracting chapter file chapters.xml failed"; $errorcount++ }
+    } else {
+#        Write-Progress -Id 1 -ParentId 0 "Step 2-4: Extracting chapters..."
+        Write-Host "Step 2-4: Extracting chapters... Skipped, No Chapters found" -ForegroundColor Green
+    }
+
+    #  Extract Subtitles
+#    if ($Copy_Subtitles -and $medinfo.Texttracks) {
+    if ($medinfo.Texttracks) {
+        $counterInternal = 0
+        Foreach ($texttrack in $medinfo.Texttracks) {
+            $counterInternal++
+            Write-Host "Step 2-5: Extracting Subtitles... $counterInternal/$($medinfo.Texttracks.Count)" -ForegroundColor Green
+#            Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($texttrack.ID-1):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
+#            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($texttrack.ID-1):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
+            Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($texttrack.StreamOrder):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
+            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($texttrack.StreamOrder):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
+            if (-not $(Test-Path -LiteralPath "$enctemp\$($texttrack.GUID).$($texttrack.Format)")) { Write-Error "Step 2-5: Extracting subtitle file $($texttrack.GUID).$($texttrack.Format) failed"; $errorcount++ }
+            $texttrack.Custom01 = "$($texttrack.GUID).$($texttrack.Format)"
+#            Write-Progress -Id 1 -ParentId 0 "Step 2-5: Extracting Subtitles... $counterInternal/$($medinfo.Texttracks.Count)"
+#            if ($([string]::IsNullOrEmpty($Sub_languages)) -or $($texttrack.Language -in $Sub_languages)) {
+#            }
+        }
+    } else {
+      Write-Host "Step 2-5: Extracting Subtitles... Skipped, No Subtitles found" -ForegroundColor Green
+#     Write-Progress -Id 1 -ParentId 0 "Step 5: Extracting Subtitles... $counterInternal/$($medinfo.Texttracks.Count)"
+    }
+
+# Encoding
     # Audio Encoding
     Switch ($RecompressMethod) {
         "AviSynth" {
@@ -322,12 +372,11 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
             "DirectShowSource(""$($file.FullName)"")" | Out-File "$enctemp\videofile.avs" -Append -Encoding Ascii
             Write-Verbose "AviSynth Command Line: $wavi ""$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
             Start-Process -Wait -NoNewWindow -FilePath $wavi -ArgumentList """$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
-#            Compress-ToM4A -SourceFile "$enctemp\$($medinfo.Audiotracks[0].GUID).pcm" -DestinationFileName "$enctemp\$($audiotrack.GUID).m4a"
             $eac3 = [EAC3]::new($eac3to, $ffmpeg_path)
             $eac3.OpenSrcFile("$enctemp\$($medinfo.Audiotracks[0].GUID).pcm")
             $eac3.DestinationFileName = "$enctemp\$($audiotrack.GUID).m4a"
             $eac3.Compress()
-            if ($errorcount -gt 0) { continue Main }
+            if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a")) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ }
             $medinfo.Audiotracks[0].Custom01 = "$($medinfo.Audiotracks[0].GUID).m4a"
             $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
             $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
@@ -336,9 +385,11 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
             $eac3 = $null
         }
         "Decoder" {
+            $counterInternal = 0
             Foreach ($audiotrack in $medinfo.Audiotracks) {
-                Write-Verbose "Extractor Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
-                Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+                $counterInternal++
+#                Write-Progress -Id 1 -ParentId 0 "Step 3-1: Audio Encoding File $counterInternal/$($medinfo.Audiotracks.Count)"
+                Write-Host "Step 3-1: Audio Encoding File $counterInternal/$($medinfo.Audiotracks.Count)" -ForegroundColor Green
                 $audiotrack.Custom01 = "$($audiotrack.GUID).$($audiotrack.Format)"
                 if (-not $take_audio_from_source) {
                     $eac3 = [EAC3]::new($eac3to, $ffmpeg_path)
@@ -346,8 +397,7 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
                     $eac3.OpenSrcFile("$enctemp\$($audiotrack.GUID).$($audiotrack.Format)")
                     $eac3.DestinationFileName = "$enctemp\$($audiotrack.GUID).m4a"
                     $eac3.Compress()
-#                    Compress-ToM4A -SourceFile "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)" -DestinationFileName "$enctemp\$($audiotrack.GUID).m4a"
-                    if ($errorcount -gt 0) { continue Main }
+                    if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a")) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ }
                     $audiotrack.Custom01 = "$($audiotrack.GUID).m4a"
                     $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
                     $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
@@ -360,46 +410,14 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
         default	{ throw "Unknown Recompress Method." }
     }
 
-    # Video Encoding
-    #  Extracting timecode
+    if ($errorcount -gt 0) { $totalErrorsCount = $totalErrorsCount + $errorcount; continue Main }
+
+    #  Video Encoding
+    $counterInternal = 0
     Foreach ($videotrack in $medinfo.Videotracks) {
-        "Extracting timecodes..."
-        Write-Verbose "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
-        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
-        # Replace Title
-        if ($titles_from_json) {
-            "Use Title Source: $titles_from_json"
-            Write-Verbose "Title looking for in JSON: $($file.Name)"
-            "Title for $($file.Name): $($($json | Where-Object {$_.file -eq $($file.Name)}).title)"
-            $videotrack.Title = $($json | Where-Object {$_.file -eq $($file.Name)}).title
-        }
-    }
-
-    #  Extracting Chapters
-    if ($Copy_Chapters -and $medinfo.Chapters) {
-        "Extracting chapters..."
-        Write-Verbose "mkvextract Command Line: $mkvextract_path chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
-        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
-    }
-
-    #  Extract Subtitles
-    if ($Copy_Subtitles -and $medinfo.Texttracks) {
-        "Extracting Subtitles..."
-        Foreach ($texttrack in $medinfo.Texttracks) {
-            if ($([string]::IsNullOrEmpty($Sub_languages)) -or $($texttrack.Language -in $Sub_languages)) {
-                Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($texttrack.ID-1):""$enctemp\$($texttrack.GUID).$($($texttrack.Format))"""
-                Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($texttrack.ID-1):""$enctemp\$($texttrack.GUID).$($($texttrack.Format))"""
-                $texttrack.Custom01 = "$($texttrack.GUID).$($($texttrack.Format))"
-            }
-        }
-    }
-
-    #  Encoding
-    if ($errorcount -gt 0) { continue Main }
-    Foreach ($videotrack in $medinfo.Videotracks) {
-        #		Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.ID) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
-        Write-Verbose "mkvextract Command Line: $mkvmerge_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
-        Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+        $counterInternal++
+        Write-Host "Step 3-2: Video Encoding... $counterInternal/$($medinfo.Videotracks.Count)" -ForegroundColor Green
+#        Write-Progress -Id 1 -ParentId 0 "Step 3-2: Video Encoding... $counterInternal/$($medinfo.Videotracks.Count)"
         Switch ($DecompressSource) {
             "DirectShowSource" {
                 Write-Verbose "DirectShowSource Selected"
@@ -421,6 +439,13 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
                 $Encode.Crop.Top = $crop[2];
                 $Encode.Crop.Right = $crop[3];
                 $Encode.Crop.Bottom = $crop[4];
+                $Encode.Deinterlace.Enabled = $deinterlace[0];
+                $Encode.Deinterlace.Mode = $deinterlace[1];
+                $Encode.Deinterlace.Parity = $deinterlace[2];
+                $Encode.Deinterlace.Deint = $deinterlace[3];
+                $Encode.VSync = $vsync;
+                $Encode.CustomFilter = $CustomFilter;
+                $Encode.CustomModifier = $CustomModifier;
                 $videotrack.Custom01 = "$($videotrack.GUID).hevc"
                 Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
                 $Encode.Compress();
@@ -447,6 +472,13 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
                 $Encode.Crop.Top = $crop[2];
                 $Encode.Crop.Right = $crop[3];
                 $Encode.Crop.Bottom = $crop[4];
+                $Encode.Deinterlace.Enabled = $deinterlace[0];
+                $Encode.Deinterlace.Mode = $deinterlace[1];
+                $Encode.Deinterlace.Parity = $deinterlace[2];
+                $Encode.Deinterlace.Deint = $deinterlace[3];
+                $Encode.VSync = $vsync;
+                $Encode.CustomFilter = $CustomFilter;
+                $Encode.CustomModifier = $CustomModifier;
                 $videotrack.Custom01 = "$($videotrack.GUID).hevc"
                 Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
                 $Encode.Compress();
@@ -471,6 +503,13 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
                 $Encode.Crop.Top = $crop[2];
                 $Encode.Crop.Right = $crop[3];
                 $Encode.Crop.Bottom = $crop[4];
+                $Encode.Deinterlace.Enabled = $deinterlace[0];
+                $Encode.Deinterlace.Mode = $deinterlace[1];
+                $Encode.Deinterlace.Parity = $deinterlace[2];
+                $Encode.Deinterlace.Deint = $deinterlace[3];
+                $Encode.VSync = $vsync;
+                $Encode.CustomFilter = $CustomFilter;
+                $Encode.CustomModifier = $CustomModifier;
                 $videotrack.Custom01 = "$($videotrack.GUID).hevc"
                 Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
                 $Encode.Compress();
@@ -478,24 +517,24 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
             }
             default	{ throw "Unknown Recompress Method." }
         }
-    #  Extracting timecode
-    #    Write-Verbose "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$($Encode.DestinationFileName)"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
-    #    Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$($Encode.DestinationFileName)"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
+        if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.GUID).hevc")) { Write-Error "Step 3-2: Video Encoding $($videotrack.GUID).hevc failed"; $errorcount++ }
     }
 
     #  Check for Errors
-    if ($errorscount -gt 0) { continue Main }
-    
+    if ($errorscount -gt 0) { $totalErrorsCount = $totalErrorsCount + $errorcount; continue Main }
+
+# Combine MKV
+    Write-Host "Step 4: Merge Files" -ForegroundColor Green
+#    Write-Progress -Id 1 -ParentId 0 "Step 7: Merge Files"
     Write-Verbose "Merging result to $out\$($file.basename).mkv"
     $mkvmerge = [MKVMerge]::new($mkvmerge_path);
     $mkvmerge.DestinationFile = "$out\$($file.basename).mkv";
 
-    # Combine MKV
     Foreach ($videotrack in $medinfo.Videotracks) {
         $videotrk = [TVideoTrack]::new()
         $videotrk.FileName = "$enctemp\$($videotrack.Custom01)";
         if ($video_languages[0] -or (-not $videotrack.Language)) { $videotrk.Language = $video_languages[[int]$videotrack.StreamKindID + 1] } else { $videotrk.Language = $($videotrack.Language) }
-        $videotrk.Title = $videotrack.Title;
+        $videotrk.Title = $videotrack.Title.Replace('"','\"');
         $videotrk.TimeCodeFile = "$enctemp\$($videotrack.GUID).timecode";
         $mkvmerge.VideoTracks += $videotrk;
     }
@@ -503,23 +542,40 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
     Foreach ($audiotrack in $medinfo.Audiotracks) {
         $audiotrk = [TAudioTrack]::new()
         $audiotrk.FileName = "$enctemp\$($audiotrack.Custom01)";
-        if ($audio_languages[0] -or (-not $audiotrack.Language)) { $audiotrk.Language = $audio_languages[[int]$audiotrack.StreamKindID + 1] } else { $audiotrk.Language = $($audiotrack.Language) }
+        if ($set_audio_languages[0] -or (-not $audiotrack.Language)) { $audiotrk.Language = $set_audio_languages[[int]$audiotrack.StreamKindID + 1] } else { $audiotrk.Language = $($audiotrack.Language) }
         $audiotrk.Title = "$($audiotrack.Format) $($audiotrack.Channels)";
-        $mkvmerge.AudioTracks += $audiotrk;
+	Switch ($select_audio_by[0])
+	{
+		"language" 	{if ($audiotrk.Language -in $select_audio_by[1]){$mkvmerge.AudioTracks += $audiotrk} else {$audiotrk = $null}}
+		"trackid" 	{if ($audiotrk.StreamKindID -in $select_audio_by[1]){$mkvmerge.AudioTracks += $audiotrk} else {$audiotrk = $null}}
+		default	{$mkvmerge.AudioTracks += $audiotrk}
+	}
     }
 
-    if ($Copy_Chapters -and $(Test-Path -LiteralPath "$enctemp\chapters.xml") -and $($((Get-Item "$enctemp\chapters.xml").Length) -gt 0)) {
-        $mkvmerge.ChaptersFile = "$enctemp\chapters.xml"
+    if ($($index -ge 0) -and $chapter_file) {
+        $mkvmerge.ChaptersFile = "$enctemp\$chapter_file"
+    } else {
+        if ($Copy_Chapters -and $(Test-Path -LiteralPath "$enctemp\chapters.xml") -and $($((Get-Item "$enctemp\chapters.xml").Length) -gt 0)) {
+            $mkvmerge.ChaptersFile = "$enctemp\chapters.xml"
+        }
     }
 
-    if ($Copy_Subtitles -and $medinfo.Texttracks) {
-        Foreach ($texttrack in $medinfo.Texttracks) {
-            if ($([string]::IsNullOrEmpty($Sub_languages)) -or $($texttrack.Language -in $Sub_languages)) {
-                $texttrk = [TSubtitleTrack]::new()
-                $texttrk.FileName = "$enctemp\$($texttrack.Custom01)";
-                $texttrk.Language = "$($texttrack.Language)"
-                $texttrk.Title = "$($texttrack.Title)"
-                $mkvmerge.SubtitleTracks += $texttrk;
+    if ($($index -ge 0) -and $subtitle_file) {
+        $texttrk = [TSubtitleTrack]::new()
+        $texttrk.FileName = "$enctemp\$subtitle_file"
+        $texttrk.Language = $Sub_languages[0]
+        $texttrk.Title = ""
+        $mkvmerge.SubtitleTracks = $texttrk;
+    } else {
+        if ($Copy_Subtitles -and $medinfo.Texttracks) {
+            Foreach ($texttrack in $medinfo.Texttracks) {
+                if ($([string]::IsNullOrEmpty($Sub_languages)) -or $($texttrack.Language -in $Sub_languages)) {
+                    $texttrk = [TSubtitleTrack]::new()
+                    $texttrk.FileName = "$enctemp\$($texttrack.Custom01)"
+                    $texttrk.Language = "$($texttrack.Language)"
+                    $texttrk.Title = "$($texttrack.Title)"
+                    $mkvmerge.SubtitleTracks += $texttrk;
+                }
             }
         }
     }
@@ -527,30 +583,40 @@ if ($null -eq $files) { Write-Output "No files to convert" } else { $files | For
 
     $res = $mkvmerge.MakeFile()
     Write-Verbose "Run Command Cli: $res"
+    if (-not $(Test-Path -LiteralPath "$out\$($file.basename).mkv")) { Write-Error "Merge video file $($file.basename).mkv failed"; $errorcount++ }
 
     # Removing Temp Files
-    if (-not $(Test-Debug)) {
-        Write-Verbose "Cleaning $enctemp"
-        Remove-Item $enctemp\*
-        
-        if ($del_original -and $(Test-Path -LiteralPath $out\$($file.basename).mkv) -and $($errorcount -eq 0)) { 
+    Write-Verbose "Cleaning $enctemp"
+    if ($errorcount -eq 0) { Remove-Item $enctemp\* } else { Write-Verbose "Cleaning Skipped because of $errorcount error(s)" }
+    
+    if ($del_original -and $($errorcount -eq 0)) { 
+        Write-Verbose "Removing files from source"
+        if (Test-Path -LiteralPath $file.fullname) {
             Write-Verbose "Remove $($file.fullname)"
             Remove-Item -LiteralPath $file.fullname
         }
+        if ($use_json -and ($index -ge 0)) {
+            if ($json[$index].subtitle_file -and $(Test-Path -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].subtitle_file))) {
+                Write-Verbose "Remove subtitle file $($json[$index].subtitle_file)"
+                Remove-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].subtitle_file)
+            }
+            if ($json[$index].chapter_file -and $(Test-Path -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file))) {
+                Write-Verbose "Remove subtitle file $($json[$index].chapter_file)"
+                Remove-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file)
+            }
+        }
     }
+    $totalErrorsCount = $totalErrorsCount + $errorcount
 }
 
 # Last Task
 if ($(Test-Path -LiteralPath $(Join-Path $in "shutdown"))) { Remove-Item $(Join-Path $in "shutdown"); $shutdown = $true }
-Write-Verbose ""
-Write-Verbose "Verbose Mode Enabled: $true"
+Write-Verbose "============================================"
 Write-Verbose "Delete Original: $del_original"
 Write-Verbose "Result File: $out\$($file.basename).mkv"
 Write-Verbose "Result File Found: $(Test-Path -LiteralPath $out\$($file.basename).mkv)"
-Write-Verbose "Errors Count: $errorcount"
-Write-Verbose ""
 Write-Verbose "Shutdown mode enabled: $shutdown"
-Write-Verbose "Press any key to Continue"
-if (Test-Debug) { $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | OUT-NULL }
-Write-Output "Process completed"
+Write-Verbose "============================================"
+if ($totalErrorsCount) {Write-Host "Errors Count: $totalErrorsCount" -ForegroundColor Red} else {Write-Host "Errors Count: $totalErrorsCount" -ForegroundColor Green}
+Write-Host "Process completed" -ForegroundColor Green
 if ($shutdown) { shutdown -t 60 -f -s }

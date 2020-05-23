@@ -25,6 +25,32 @@ enum tune {
     stillimage
 }
 
+enum vsync {
+    passthrough
+    cfr
+    vfr
+    drop
+    auto
+}
+
+enum yadif_mode {
+    send_frame
+    send_field
+    send_frame_nospatial
+    send_field_nospatial
+}
+
+enum yadif_parity {
+    tff
+    bff
+    auto
+}
+
+enum yadif_deint {
+    all
+    interlaced
+}
+
 enum ResizeMethods {
     fast_bilinear
     bilinear
@@ -51,6 +77,13 @@ class TCrop {
     [int]$Bottom = 0;
 }
 
+class TYadif {
+    [bool]$Enabled = $false;
+    [string]$Mode = [yadif_mode]::send_frame;
+    [string]$Parity = [yadif_parity]::auto;
+    [string]$Deint = [yadif_deint]::all;
+}
+
 # resize methods: fastbilinear, bilinear, bicubic, experimental, point, area, bicublin, gauss, sinc, lanczos, spline
 class TResize {
     [bool]$Enabled = $false;
@@ -69,9 +102,12 @@ class ffmpeg {
     hidden [String]$ffmpeg_path;
     [Presets]$Preset = [Presets]::medium;
     [tune]$Tune = [tune]::none;
+    [vsync]$VSync = [vsync]::auto;
     [codec]$Codec = [codec]::libx265;
     [int16]$Quantanizer = 22;
     [bool]$Enable10bit = $true;
+    [String]$CustomFilter = "";
+    [String]$CustomModifier = "";
     [io.fileinfo]$SourceFileAVS;
     [ValidateSet('.mkv', '.mp4', '.hevc', '.264')]
     hidden [String]$DestinationFileExtension = ".mkv";
@@ -80,6 +116,7 @@ class ffmpeg {
     #Filters
     [TCrop]$Crop = [TCrop]::new();
     [TResize]$Resize = [TResize]::new();
+    [TYadif]$Deinterlace = [TYadif]::new();
 
     [System.Diagnostics.ProcessPriorityClass]$ProcessPriority = [System.Diagnostics.ProcessPriorityClass]::Idle;
 
@@ -107,22 +144,28 @@ class ffmpeg {
 		
         # Creating Filter
         $filters = @()
-        $processing = "-vf "
-        $processinglist = @()
-        if ($this.Crop.Enabled) { $processinglist += "crop=w=in_w-$($this.Crop.Left)-$($this.Crop.Right):h=in_h-$($this.Crop.Top)-$($this.Crop.Bottom):x=$($this.Crop.Left):y=$($this.Crop.Top)" }
-        if ($this.Resize.Enabled) { $processinglist += "scale=$($this.Resize.Width):$($this.Resize.Height)" }
-        if ($processinglist) { $filters += $processing + [string]::Join(",", $processinglist)}
-        if ($this.Resize.Enabled -and $($this.Resize.Method)) { $filters += "-sws_flags $($this.Resize.Method)" }
-        if ($this.Enable10bit) { $filters += "-pix_fmt yuv420p10le" }
-        if ($this.Tune -ne "none") { $filters += "-tune $($this.Tune)" }
-		
+        if ($this.Crop.Enabled) { $filters += "crop=w=in_w-$($this.Crop.Left)-$($this.Crop.Right):h=in_h-$($this.Crop.Top)-$($this.Crop.Bottom):x=$($this.Crop.Left):y=$($this.Crop.Top)" }
+        if ($this.Resize.Enabled) { $filters += "scale=$($this.Resize.Width):$($this.Resize.Height)" }
+        if ($this.Deinterlace.Enabled) { $filters += "yadif=$($this.Deinterlace.Mode):$($this.Deinterlace.Parity):$($this.Deinterlace.Deint)" }
+        if ($this.CustomFilter) { $filters += $this.CustomFilter }
+
         $videofilter = ""
-        if ($filters.Length -gt 0) { $videofilter = [string]::Join(" ", $filters) }
+        if ($filters.Length -gt 0) { $videofilter = "-vf " + [string]::Join(",", $filters) }
         Write-Verbose "Filter CLI: $($videofilter)"
+
+        $modifiers = @()
+        if ($this.Enable10bit) { $modifiers += "-pix_fmt yuv420p10le" }
+        if ($this.Tune -ne "none") { $modifiers += "-tune $($this.Tune)" }
+        if ($this.VSync -ne "auto") { $modifiers += "-vsync $($this.VSync)" }
+        if ($this.Resize.Enabled -and $($this.Resize.Method)) { $modifiers += "-sws_flags $($this.Resize.Method)" }
+
+        $videoModifier = ""
+        if ($modifiers.Length -gt 0) { $videoModifier = [string]::Join(" ", $modifiers) }
+        Write-Verbose "Modifiers CLI: $($videoModifier)"
 
         # Encoding
         $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.Arguments = "-i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videofilter -an -sn -dn ""$DestinationFile"""
+        $startInfo.Arguments = "-i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn ""$DestinationFile"""
         $startInfo.FileName = $this.ffmpeg_path
         Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
         if ($this.mode -ne "Dry") {
