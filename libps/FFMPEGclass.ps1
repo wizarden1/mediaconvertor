@@ -97,8 +97,9 @@ class TResize {
 #tune: film,animation,grain,psnr,ssim,fastdecode,touhou
 #	[ValidateSet('none','film','animation','grain','stillimage','psnr','ssim','fastdecode','zerolatency')]
 class ffmpeg {
-    $mode = "normal" #"Dry"
+    [bool]$DryMode = $false
     [bool]$Verbose = $false
+    $EncProcess = $null
     hidden [String]$ffmpeg_path;
     [Presets]$Preset = [Presets]::medium;
     [tune]$Tune = [tune]::none;
@@ -130,7 +131,7 @@ class ffmpeg {
 
     [void]Compress() {
         if ($this.Verbose) { $VerbosePreference = "continue" }
-        Write-Verbose "Mode: $($this.mode)"
+        Write-Verbose "Dry Mode Enabled: $($this.DryMode)"
         if (-not $(Resolve-Path ([io.fileinfo]$this.DestinationFileName).DirectoryName | Test-Path)) { throw "ERROR: Destination path is incorrect."; return }
         $this.DestinationFileExtension = $([io.fileinfo]$this.DestinationFileName).Extension
         Write-Verbose "File extension: $($this.DestinationFileExtension)"
@@ -168,13 +169,14 @@ class ffmpeg {
         $startInfo.Arguments = "-i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn ""$DestinationFile"""
         $startInfo.FileName = $this.ffmpeg_path
         Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
-        if ($this.mode -ne "Dry") {
+        if (-not $this.DryMode) {
             $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
             $startInfo.UseShellExecute = $false
             $process = New-Object System.Diagnostics.Process
             $process.StartInfo = $startInfo
             $process.Start() | Out-Null
             $process.PriorityClass = $this.ProcessPriority
+            $this.EncProcess = $process
             $process.WaitForExit()
             if ($(Get-ChildItem $DestinationFile).Length -eq 0) { throw "File $($this.SourceFileAVS.Name) hasn't been compressed." }
         }

@@ -1,5 +1,6 @@
 #Requires -Version 5
-#Version 4.8.2
+#Version 4.9.0
+# 4.9.0 - Add async audio encoding
 # 4.8.2 - Fix name of track with " sign
 # 4.8.1 - Add Selection audio languages
 # 4.8 - Full rebuild process of recompress
@@ -28,14 +29,17 @@ $libs = @("MediaInfoclass", "mkvmergeclass", "FFMPEGclass", "EAC3class")
 
 #Audio
 $take_audio_from_source = $false
+$take_audio_track_name_from_source = $false
 $set_audio_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
 $select_audio_by = @("all", @("jpn"))     #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
 $RecompressMethod = "Decoder"                  #"AviSynth"|"Decoder"
 $DecodeAutoMode = "Pattern"                    #"Auto"|"Pattern"|"FFMpeg"|"Eac3to"
+$AsyncEncoding = $true
 
 #Video
 $video_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
-$tune = "animation"                        #tune:film,animation,grain,psnr,ssim,fastdecode,touhou
+$tune = "animation"
+#$tune = "grain"                            #tune(x265):animation,grain,psnr,ssim,fastdecode,zerolatency tune(x264):film,animation,grain,stillimage,fastdecode,zerolatency
 $DecompressSource = "Direct"	           #"FFVideoSource"|"DirectShowSource"|"Direct"
 $Copy_Chapters = $true
 $quantanizer = 24
@@ -65,8 +69,8 @@ $CustomModifier = ""
 #Advanced Config
 $del_original = $true
 $use_json = $false                         #Use title of series from json
-$json_file = ""                          #"title.json" #[{"file": "Overlord - 01 [Beatrice-Raws].mkv","subtitle_file": "Overlord - 01 [Beatrice-Raws].ass","title": "End and Beginning"},{...}]
-#$VerbosePreference = "Continue"           #Enable Verbose mode
+$json_file = ""                            #"title.json" #[{"file": "Overlord - 01 [Beatrice-Raws].mkv","subtitle_file": "Overlord - 01 [Beatrice-Raws].ass","title": "End and Beginning"},{...}]
+#$VerbosePreference = "Continue"            #Enable Verbose mode
 $shutdown = $false
 $extension = "MKV"
 
@@ -211,7 +215,7 @@ Remove-Item $enctemp\* -Force
 $files = Get-ChildItem $in | Where-Object { $_.Extension -eq ".$extension" }
 Write-Host "Files will be converted:" -ForegroundColor Green
 if ($null -eq $files) { Write-Host "No files to convert" } else { $files | ForEach-Object { Write-Host $_.BaseName } }
-$files | ForEach {
+$files | ForEach-Object {
   if ($_.IsReadOnly) {
     $_.Set_IsReadOnly($False)
     Write-Warning "Removing ReadOnly Attribute from $($_.Name)"
@@ -373,10 +377,10 @@ $counter = 0
             Write-Verbose "AviSynth Command Line: $wavi ""$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
             Start-Process -Wait -NoNewWindow -FilePath $wavi -ArgumentList """$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
             $eac3 = [EAC3]::new($eac3to, $ffmpeg_path)
-            $eac3.OpenSrcFile("$enctemp\$($medinfo.Audiotracks[0].GUID).pcm")
+            $eac3.SourceFileName = "$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"
             $eac3.DestinationFileName = "$enctemp\$($audiotrack.GUID).m4a"
             $eac3.Compress()
-            if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a")) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ }
+            if (($eac3.EncProcess.ExitCode -gt 0) -or $(-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a"))) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ }
             $medinfo.Audiotracks[0].Custom01 = "$($medinfo.Audiotracks[0].GUID).m4a"
             $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
             $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
@@ -386,25 +390,51 @@ $counter = 0
         }
         "Decoder" {
             $counterInternal = 0
+            $audio_enc_processes = @()
+            Write-Verbose "Audiotracks Count: $($medinfo.Audiotracks.Count)"
+            Write-Verbose "Async Mode Set to: $($AsyncEncoding -and ($medinfo.Audiotracks.Count -gt 1))"
             Foreach ($audiotrack in $medinfo.Audiotracks) {
                 $counterInternal++
 #                Write-Progress -Id 1 -ParentId 0 "Step 3-1: Audio Encoding File $counterInternal/$($medinfo.Audiotracks.Count)"
-                Write-Host "Step 3-1: Audio Encoding File $counterInternal/$($medinfo.Audiotracks.Count)" -ForegroundColor Green
+                Write-Host "Step 3-1: Audio Encoding File $counterInternal/$($medinfo.Audiotracks.Count): $($audiotrack.GUID).$($audiotrack.Format)" -ForegroundColor Green
                 $audiotrack.Custom01 = "$($audiotrack.GUID).$($audiotrack.Format)"
                 if (-not $take_audio_from_source) {
                     $eac3 = [EAC3]::new($eac3to, $ffmpeg_path)
                     $eac3.DecodeAutoMode = $DecodeAutoMode
-                    $eac3.OpenSrcFile("$enctemp\$($audiotrack.GUID).$($audiotrack.Format)")
+                    $eac3.SourceFileName = "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"
                     $eac3.DestinationFileName = "$enctemp\$($audiotrack.GUID).m4a"
+                    $eac3.Async = $AsyncEncoding -and ($medinfo.Audiotracks.Count -gt 1)
                     $eac3.Compress()
-                    if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a")) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ }
-                    $audiotrack.Custom01 = "$($audiotrack.GUID).m4a"
-                    $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
-                    $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
-                    $audiotrack.Format = $medinfoAud.Audiotracks[0].Format
-                    $medinfoAud.Close()
+                    $audio_enc_processes += $eac3
                     $eac3 = $null
                 }
+            }
+            if (-not $take_audio_from_source) {
+                Write-Verbose "Process List:"
+                $audio_enc_processes | ForEach-Object {
+                    Write-Verbose "Process Id: $($_.EncProcess.id) for encoding file $($_.SourceFileName.Name)"
+                }
+                Try {
+                    Wait-Process -InputObject $audio_enc_processes.EncProcess
+                }
+                Finally {
+                    Get-Process -InputObject  $audio_enc_processes.EncProcess | Stop-Process
+                }
+                $audio_enc_processes | ForEach-Object {
+                    Write-Verbose "Process Id: $($_.EncProcess.id) exit code $($_.EncProcess.ExitCode)"
+                    if ($_.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-1: Audio Encoding File $($_.SourceFileName.Name) failed"; $errorcount++ }
+                }
+                if ($errorcount -gt 0) { $totalErrorsCount = $totalErrorsCount + $errorcount; continue Main }
+                Foreach ($audiotrack in $medinfo.Audiotracks) {
+                    if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a")) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ } else {
+                        $audiotrack.Custom01 = "$($audiotrack.GUID).m4a"
+                        $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
+                        $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
+                        $audiotrack.Format = $medinfoAud.Audiotracks[0].Format
+                        $medinfoAud.Close()
+                    }
+                }
+                Write-Host "Encoding finished succesfuly"
             }
         }
         default	{ throw "Unknown Recompress Method." }
@@ -513,6 +543,7 @@ $counter = 0
                 $videotrack.Custom01 = "$($videotrack.GUID).hevc"
                 Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
                 $Encode.Compress();
+                if ($Encode.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-2: Video Encoding $($videotrack.GUID).hevc failed"; $errorcount++ }
                 $Encode = $null;
             }
             default	{ throw "Unknown Recompress Method." }
@@ -543,7 +574,7 @@ $counter = 0
         $audiotrk = [TAudioTrack]::new()
         $audiotrk.FileName = "$enctemp\$($audiotrack.Custom01)";
         if ($set_audio_languages[0] -or (-not $audiotrack.Language)) { $audiotrk.Language = $set_audio_languages[[int]$audiotrack.StreamKindID + 1] } else { $audiotrk.Language = $($audiotrack.Language) }
-        $audiotrk.Title = "$($audiotrack.Format) $($audiotrack.Channels)";
+        if (-not $take_audio_track_name_from_source) { $audiotrk.Title = "$($audiotrack.Format) $($audiotrack.Channels)" } else { $audiotrk.Title = $audiotrack.Title }
 	Switch ($select_audio_by[0])
 	{
 		"language" 	{if ($audiotrk.Language -in $select_audio_by[1]){$mkvmerge.AudioTracks += $audiotrk} else {$audiotrk = $null}}
