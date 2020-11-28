@@ -107,6 +107,7 @@ class ffmpeg {
     [codec]$Codec = [codec]::libx265;
     [int16]$Quantanizer = 22;
     [bool]$Enable10bit = $true;
+    [bool]$Pulldown = $false;
     [String]$CustomFilter = "";
     [String]$CustomModifier = "";
     [io.fileinfo]$SourceFileAVS;
@@ -148,6 +149,11 @@ class ffmpeg {
         if ($this.Crop.Enabled) { $filters += "crop=w=in_w-$($this.Crop.Left)-$($this.Crop.Right):h=in_h-$($this.Crop.Top)-$($this.Crop.Bottom):x=$($this.Crop.Left):y=$($this.Crop.Top)" }
         if ($this.Resize.Enabled) { $filters += "scale=$($this.Resize.Width):$($this.Resize.Height)" }
         if ($this.Deinterlace.Enabled) { $filters += "yadif=$($this.Deinterlace.Mode):$($this.Deinterlace.Parity):$($this.Deinterlace.Deint)" }
+        if ($this.Pulldown) {
+          $filters += "fieldmatch"
+          $filters += "decimate" 
+          if (-not $this.Deinterlace.Enabled) {$filters += "yadif" }
+        }
         if ($this.CustomFilter) { $filters += $this.CustomFilter }
 
         $videofilter = ""

@@ -10,11 +10,12 @@ class TVideoTrack {
     [string]$Width;
     [string]$Height;
     [string]$TimeCodeFile;
+    [bool]$UseTimeCodeFile = $true;
 
     [string] MakeCommand () {
         $this.videotrack_cli = "";
         #	    $this.videotrack_cli += " --default-track 0";
-        if ($this.TimeCodeFile) {
+        if ($this.TimeCodeFile -and $this.UseTimeCodeFile) {
             if (Test-Path $this.TimeCodeFile -PathType Leaf) { $this.videotrack_cli += " --timecodes 0:""$($this.TimeCodeFile)""" } else { throw "ERROR: Timecode file $($this.TimeCodeFile) can't be accessed." }
         }
         if ($this.Language) { $this.videotrack_cli += " --language 0:""$($this.Language)""" };
@@ -72,7 +73,8 @@ class MKVMerge {
     hidden [string]$MKVMerge_path;
 
     [string]$DestinationFile;
-
+    [string]$Title;
+    $EncProcess = $null;
     [TVideoTrack[]]$VideoTracks;
     [TAudioTrack[]]$AudioTracks;
     [TSubtitleTrack[]]$SubtitleTracks;
@@ -83,7 +85,8 @@ class MKVMerge {
         if (Test-Path $MKVMerge_path -PathType Leaf) { $this.MKVMerge_path = $MKVMerge_path } else { throw "ERROR: Can not access executable mkvmerge.exe." }
     }
 
-    [string] MakeFile () {
+    [void]MakeFile () {
+        if (-not $this.title) {$this.title = $this.DestinationFile.Split("\")[-1];}
         $chapters_cli = "";
         if ($this.ChaptersFile) {
             if (Test-Path -LiteralPath $this.ChaptersFile -PathType Leaf) { $chapters_cli = " --chapters ""$($this.ChaptersFile)""" } else { throw "ERROR: Chapters XML file $($this.ChaptersFile) can't be accessed." }
@@ -97,11 +100,10 @@ class MKVMerge {
         $subtitle_cli = "";
         if ($this.SubtitleTracks) { $this.SubtitleTracks | ForEach-Object { $subtitle_cli += $_.MakeCommand() } }
 
-        Start-Process -Wait -NoNewWindow -FilePath $this.MKVMerge_path -ArgumentList "--output ""$($this.DestinationFile)"" $videotrack_cli $audiotrack_cli $chapters_cli $subtitle_cli"
-        return "$($this.MKVMerge_path) --output ""$($this.DestinationFile)"" $videotrack_cli $audiotrack_cli $chapters_cli $subtitle_cli";
+        Write-Verbose "Run Command Cli: $($this.MKVMerge_path) --output ""$($this.DestinationFile)"" --title ""$($this.Title)"" $videotrack_cli $audiotrack_cli $chapters_cli $subtitle_cli"
+        $proc = Start-Process -Wait -NoNewWindow -PassThru -FilePath $this.MKVMerge_path -ArgumentList "--output ""$($this.DestinationFile)"" --title ""$($this.Title)"" $videotrack_cli $audiotrack_cli $chapters_cli $subtitle_cli"
+        $this.EncProcess = $proc
     }
-
-
 }
 
 #$res = [MKVMerge]::new("C:\Multimedia\Programs\mkvtoolnix\mkvmerge.exe")

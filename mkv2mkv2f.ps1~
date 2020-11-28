@@ -1,5 +1,7 @@
 #Requires -Version 5
-#Version 4.9.0
+#Version 4.10.1
+# 4.10.1 - Add Title to mkvmerge library
+# 4.10.0 - Add Video from source
 # 4.9.0 - Add async audio encoding
 # 4.8.2 - Fix name of track with " sign
 # 4.8.1 - Add Selection audio languages
@@ -29,7 +31,8 @@ $libs = @("MediaInfoclass", "mkvmergeclass", "FFMPEGclass", "EAC3class")
 
 #Audio
 $take_audio_from_source = $false
-$take_audio_track_name_from_source = $false
+#$take_audio_from_source = $true
+$take_audio_track_name_from_source = $true
 $set_audio_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
 $select_audio_by = @("all", @("jpn"))     #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
 $RecompressMethod = "Decoder"                  #"AviSynth"|"Decoder"
@@ -37,9 +40,10 @@ $DecodeAutoMode = "Pattern"                    #"Auto"|"Pattern"|"FFMpeg"|"Eac3t
 $AsyncEncoding = $true
 
 #Video
+$take_video_from_source = $false
 $video_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
-$tune = "animation"
-#$tune = "grain"                            #tune(x265):animation,grain,psnr,ssim,fastdecode,zerolatency tune(x264):film,animation,grain,stillimage,fastdecode,zerolatency
+#$tune = "animation"
+$tune = "grain"                            #tune(x265):animation,grain,psnr,ssim,fastdecode,zerolatency tune(x264):film,animation,grain,stillimage,fastdecode,zerolatency
 $DecompressSource = "Direct"	           #"FFVideoSource"|"DirectShowSource"|"Direct"
 $Copy_Chapters = $true
 $quantanizer = 24
@@ -63,12 +67,13 @@ $deinterlace = @($false, "send_frame", "auto", "all") #(send_frame, send_field, 
 $CustomFilter = ""
 
 #Modifiers
-$vsync = "passthrough"                     #passthrough, cfr, vfr, drop, auto     #Required for vfr video
+#$vsync = "passthrough"                     #passthrough, cfr, vfr, drop, auto     #Required for vfr video
+$vsync = "auto"                     #passthrough, cfr, vfr, drop, auto     #Required for vfr video
 $CustomModifier = ""
 
 #Advanced Config
 $del_original = $true
-$use_json = $false                         #Use title of series from json
+$use_json = $true                          #Use title of series from json
 $json_file = ""                            #"title.json" #[{"file": "Overlord - 01 [Beatrice-Raws].mkv","subtitle_file": "Overlord - 01 [Beatrice-Raws].ass","title": "End and Beginning"},{...}]
 #$VerbosePreference = "Continue"            #Enable Verbose mode
 $shutdown = $false
@@ -325,11 +330,14 @@ $counter = 0
         Write-Verbose "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.StreamOrder):""$enctemp\$($videotrack.GUID).timecode"""
         Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.StreamOrder):""$enctemp\$($videotrack.GUID).timecode"""
         if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.GUID).timecode")) { Write-Error "Step 2-3: Extracting timecode file $($videotrack.GUID).timecode failed"; $errorcount++ }
-        # Replace Title
+    # Replace Title
         if ($use_json) {
             Write-Verbose "Title looking for in JSON: $($file.Name)"
             Write-Host "Step 2-3: Replace title from JSON for $($file.Name): $($($json | Where-Object {$_.file -eq $($file.Name)}).title)"
             $videotrack.Title = $($json | Where-Object {$_.file -eq $($file.Name)}).title
+            $medinfo.Title = $($json | Where-Object {$_.file -eq $($file.Name)}).title
+        } else {
+            $videotrack.Title = $medinfo.Title
         }
     }
 
@@ -348,7 +356,7 @@ $counter = 0
 
     #  Extract Subtitles
 #    if ($Copy_Subtitles -and $medinfo.Texttracks) {
-    if ($medinfo.Texttracks) {
+    if ($medinfo.Texttracks -and $Copy_Subtitles) {
         $counterInternal = 0
         Foreach ($texttrack in $medinfo.Texttracks) {
             $counterInternal++
@@ -407,7 +415,7 @@ $counter = 0
                     $eac3.Compress()
                     $audio_enc_processes += $eac3
                     $eac3 = $null
-                }
+                } else {Write-Host "Selected Take Audio From Source - Skipped" -ForegroundColor Green}
             }
             if (-not $take_audio_from_source) {
                 Write-Verbose "Process List:"
@@ -435,7 +443,7 @@ $counter = 0
                     }
                 }
                 Write-Host "Encoding finished succesfuly"
-            }
+            } else {Write-Host "Selected Take Audio From Source - Skipped" -ForegroundColor Green}
         }
         default	{ throw "Unknown Recompress Method." }
     }
@@ -480,7 +488,6 @@ $counter = 0
                 Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
                 $Encode.Compress();
                 $Encode = $null;
-
             }
             "FFVideoSource" {
                 Write-Verbose "FFVideoSource Selected"
@@ -516,39 +523,46 @@ $counter = 0
             }
             "Direct" {
                 Write-Verbose "Direct Selected"
-                "$($videotrack.GUID).$($videotrack.Format)"
-                $Encode = [ffmpeg]::new($ffmpeg_path);
-                $Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).$($videotrack.Format).src";
-                $Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).hevc";
-                $Encode.Quantanizer = $quantanizer;
-                $Encode.Preset = $preset;
-                $Encode.Tune = $tune;
-                $Encode.Codec = $codec;
-                $Encode.Resize.Enabled = $resize[0];
-                $Encode.Resize.Width = $resize[1];
-                $Encode.Resize.Height = $resize[2];
-                $Encode.Resize.Method = $resize[3];
-                $Encode.Crop.Enabled = $crop[0];
-                $Encode.Crop.Left = $crop[1];
-                $Encode.Crop.Top = $crop[2];
-                $Encode.Crop.Right = $crop[3];
-                $Encode.Crop.Bottom = $crop[4];
-                $Encode.Deinterlace.Enabled = $deinterlace[0];
-                $Encode.Deinterlace.Mode = $deinterlace[1];
-                $Encode.Deinterlace.Parity = $deinterlace[2];
-                $Encode.Deinterlace.Deint = $deinterlace[3];
-                $Encode.VSync = $vsync;
-                $Encode.CustomFilter = $CustomFilter;
-                $Encode.CustomModifier = $CustomModifier;
-                $videotrack.Custom01 = "$($videotrack.GUID).hevc"
-                Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
-                $Encode.Compress();
-                if ($Encode.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-2: Video Encoding $($videotrack.GUID).hevc failed"; $errorcount++ }
-                $Encode = $null;
+                $videotrack.Custom01 = "$($videotrack.GUID).$($videotrack.Format).src"
+                if (-not $take_video_from_source) {
+                    Write-Host "Source File: $($videotrack.Custom01)" -ForegroundColor Green
+                    $videotrack.Custom01 = "$($videotrack.GUID).hevc"
+                    Write-Host "Destination File: $($videotrack.Custom01)" -ForegroundColor Green
+                    $Encode = [ffmpeg]::new($ffmpeg_path);
+                    $Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).$($videotrack.Format).src";
+                    $Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).hevc";
+                    $Encode.Quantanizer = $quantanizer;
+                    $Encode.Preset = $preset;
+                    $Encode.Tune = $tune;
+                    $Encode.Codec = $codec;
+                    $Encode.Resize.Enabled = $resize[0];
+                    $Encode.Resize.Width = $resize[1];
+                    $Encode.Resize.Height = $resize[2];
+                    $Encode.Resize.Method = $resize[3];
+                    $Encode.Crop.Enabled = $crop[0];
+                    $Encode.Crop.Left = $crop[1];
+                    $Encode.Crop.Top = $crop[2];
+                    $Encode.Crop.Right = $crop[3];
+                    $Encode.Crop.Bottom = $crop[4];
+                    $Encode.Deinterlace.Enabled = $deinterlace[0];
+                    $Encode.Deinterlace.Mode = $deinterlace[1];
+                    $Encode.Deinterlace.Parity = $deinterlace[2];
+                    $Encode.Deinterlace.Deint = $deinterlace[3];
+                    $Encode.VSync = $vsync;
+                    $Encode.CustomFilter = $CustomFilter;
+                    $Encode.CustomModifier = $CustomModifier;
+                    Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
+                    $Encode.Compress();
+                    if ($Encode.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-2: Video Encoding $($videotrack.GUID).hevc failed"; $errorcount++ }
+                    $Encode = $null;
+                } else {
+                    Write-Host "Selected Take Video From Source. Encoding - Skipped" -ForegroundColor Green
+                    Write-Host "Video File: $($videotrack.Custom01)" -ForegroundColor Green
+                }
             }
-            default	{ throw "Unknown Recompress Method." }
+            default { throw "Unknown Recompress Method." }
         }
-        if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.GUID).hevc")) { Write-Error "Step 3-2: Video Encoding $($videotrack.GUID).hevc failed"; $errorcount++ }
+        if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.Custom01)")) { Write-Error "Step 3-2: Video Encoding $($videotrack.Custom01) failed"; $errorcount++ }
     }
 
     #  Check for Errors
@@ -560,6 +574,7 @@ $counter = 0
     Write-Verbose "Merging result to $out\$($file.basename).mkv"
     $mkvmerge = [MKVMerge]::new($mkvmerge_path);
     $mkvmerge.DestinationFile = "$out\$($file.basename).mkv";
+    $mkvmerge.Title = $medinfo.Title.Replace('"','\"');
 
     Foreach ($videotrack in $medinfo.Videotracks) {
         $videotrk = [TVideoTrack]::new()
@@ -612,8 +627,8 @@ $counter = 0
     }
     Write-Verbose "Merge config: $(ConvertTo-Json $mkvmerge)"
 
-    $res = $mkvmerge.MakeFile()
-    Write-Verbose "Run Command Cli: $res"
+    $mkvmerge.MakeFile();
+    Write-Verbose "Merge Exit Code: $($mkvmerge.EncProcess.ExitCode)"
     if (-not $(Test-Path -LiteralPath "$out\$($file.basename).mkv")) { Write-Error "Merge video file $($file.basename).mkv failed"; $errorcount++ }
 
     # Removing Temp Files
