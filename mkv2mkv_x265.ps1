@@ -20,7 +20,7 @@ $preset="veryslow"		#ultrafast,superfast,veryfast,faster,fast,medium,slow,slower
 
 
 #Filters
-$crop=@($false,40,0,40,0) #crop:enabled,left,top,right,bottom
+$crop=@($false,240,0,240,0) #crop:enabled,left,top,right,bottom
 #$resize=@($true,1280,720,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,960,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
 $resize=@($false,0,0,"lanczos","") #resize:enabled,width,height,method,", additional parametrs"
@@ -38,6 +38,7 @@ $extension="MKV"
 #General Paths
 $root_path = $(Get-Location).Path
 $tools_path = Join-Path $root_path "tools"
+$tools64_path = Join-Path $root_path "tools_64"
 $enctemp = Join-Path $root_path "temp"
 $out = Join-Path $root_path "out"
 $in = Join-Path $root_path "in"
@@ -49,16 +50,16 @@ if (-not $(Test-Path -LiteralPath $enctemp)){New-Item -Path $root_path -Name "te
 
 #Tools
 $neroAacEnc_path = Join-Path $tools_path "neroAacEnc.exe"
-$MediaInfoWrapper_path = Join-Path $tools_path "MediaInfoWrapper.dll"
-$x265_path = Join-Path $tools_path "x265\x265-64bit-10b-3.2+34[VS2019].exe"
-$mkvmerge_path = Join-Path $tools_path "mkvtoolnix\mkvmerge.exe"
-$mkvextract_path = Join-Path $tools_path "mkvtoolnix\mkvextract.exe"
+$MediaInfoWrapper_path = Join-Path $tools64_path "MediaInfoWrapper.dll"
+$x265_path = Join-Path $tools64_path "x265\x265-64bit-10b-3.5+13[VS2019].exe"
+$mkvmerge_path = Join-Path $tools64_path "mkvtoolnix\mkvmerge.exe"
+$mkvextract_path = Join-Path $tools64_path "mkvtoolnix\mkvextract.exe"
 $oggdec_path = Join-Path $tools_path "oggdec.exe"
 $eac3to = Join-Path $tools_path "eac3to\eac3to.exe"
 $faad_path = Join-Path $tools_path "faad.exe"
 $wavi = Join-Path $tools_path "Wavi.exe"
-$avs2yuv_path = Join-Path $tools_path "avs2yuv\avs2yuv64.exe"
-$ffmpeg_path = Join-Path $tools_path "ffmpeg_64.exe"
+$avs2yuv_path = Join-Path $tools64_path "avs2yuv\avs2yuv64.exe"
+$ffmpeg_path = Join-Path $tools64_path "ffmpeg.exe"
 
 Write-Debug "Debug Mode Enabled"
 
