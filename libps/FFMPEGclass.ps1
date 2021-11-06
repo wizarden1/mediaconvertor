@@ -1,5 +1,11 @@
 ﻿#Requires -Version 5
 
+# Current Version 1.1
+# Version 1.1
+#   - add ffmpeg format of crop
+# Version 1.0
+#   - initial release
+
 enum Presets {
     ultrafast
     superfast
@@ -71,10 +77,13 @@ enum codec {
 }
 class TCrop {
     [bool]$Enabled = $false;
+# ltrb, ffmpeg
+    [string]$Mode = "ltrb";
     [int]$Left = 0;
     [int]$Top = 0;
     [int]$Right = 0;
     [int]$Bottom = 0;
+    [string]$FFMPEG = "";
 }
 
 class TYadif {
@@ -146,7 +155,13 @@ class ffmpeg {
 		
         # Creating Filter
         $filters = @()
-        if ($this.Crop.Enabled) { $filters += "crop=w=in_w-$($this.Crop.Left)-$($this.Crop.Right):h=in_h-$($this.Crop.Top)-$($this.Crop.Bottom):x=$($this.Crop.Left):y=$($this.Crop.Top)" }
+        if ($this.Crop.Enabled) {
+          switch ($this.Crop.Mode) {
+               "ltrb" { $filters += "crop=w=in_w-$($this.Crop.Left)-$($this.Crop.Right):h=in_h-$($this.Crop.Top)-$($this.Crop.Bottom):x=$($this.Crop.Left):y=$($this.Crop.Top)" }
+               "ffmpeg" { $filters += "crop=$($this.Crop.FFMPEG)" }
+               default { throw "ERROR: Unknown Crop Mode" }
+          }
+        }
         if ($this.Resize.Enabled) { $filters += "scale=$($this.Resize.Width):$($this.Resize.Height)" }
         if ($this.Deinterlace.Enabled) { $filters += "yadif=$($this.Deinterlace.Mode):$($this.Deinterlace.Parity):$($this.Deinterlace.Deint)" }
         if ($this.Pulldown) {
