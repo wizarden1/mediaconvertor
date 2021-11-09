@@ -1,5 +1,6 @@
 #Requires -Version 5
-#Version 4.11.0
+#Version 4.11.1
+# 4.11.1 - Add VobSub Subtitles usage
 # 4.11.0 - Add pulldown
 # 4.10.1 - Add Title to mkvmerge library
 # 4.10.0 - Add Video from source
@@ -25,7 +26,8 @@
 # 4.0 - Add ffmpeg
 
 param (
-    [switch]$Verbose = $false
+    [switch]$Verbose = $false,
+    [switch]$Debug = $false
 )
 #Config
 $libs = @("MediaInfoclass", "mkvmergeclass", "FFMPEGclass", "EAC3class")
@@ -35,7 +37,7 @@ $take_audio_from_source = $false
 #$take_audio_from_source = $true
 $take_audio_track_name_from_source = $false
 $set_audio_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
-$select_audio_by = @("all", @("jpn"))     #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
+$select_audio_by = @("language", @("jpn"))     #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
 $RecompressMethod = "Decoder"                  #"AviSynth"|"Decoder"
 $DecodeAutoMode = "Pattern"                    #"Auto"|"Pattern"|"FFMpeg"|"Eac3to"
 $AsyncEncoding = $true
@@ -58,7 +60,8 @@ $Copy_Subtitles = $true
 $Sub_languages = @("rus")                  #@("lng1","lng2","lng3",...)
 
 #Filters
-$crop = @($false,"ltrb","",240,0,240,0)    #crop:enabled,mode("ltrb","ffmpeg"),ffmpeg_crop_string,left,top,right,bottom  
+$crop = @($false,"ffmpeg","1424:1070:248:6",240,0,240,0)    #crop:enabled,mode("ltrb","ffmpeg"),ffmpeg_crop_string,left,top,right,bottom  
+#$crop = @($true,"ltrb","",240,0,240,0)    #crop:enabled,mode("ltrb","ffmpeg"),ffmpeg_crop_string,left,top,right,bottom  
 #$resize=@($true,1280,720,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,960,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
 $resize = @($false, 0, 0, "lanczos", "")   #resize:enabled,width,height,method,", additional parametrs"
@@ -93,6 +96,7 @@ $libs_path = Join-Path $root_path "libps"
 # Init
 if ($Verbose) {$VerbosePreference = "continue"}
 Write-Verbose "Verbose Mode Enabled"
+if ($Debug) {Write-Host "Debug mode Enabled" -ForegroundColor Red}
 
 #Prepare base folders
 if (-not $(Test-Path -LiteralPath $in)) { New-Item -Path $root_path -Name "in" -ItemType "directory" }
@@ -229,6 +233,7 @@ $files | ForEach-Object {
   }
 }
 $totalErrorsCount = 0
+$FilesWithErrors = @()
 $counter = 0
 :Main Foreach ($file in $files) {
     $counter++
@@ -270,7 +275,7 @@ $counter = 0
 
     if ($use_json) {
         $chapter_file = $json[$index].chapter_file
-        if ($($index -ge 0) -and $chapter_file) {
+        if ($($index -ge 0) -and $chapter_file) { 
             Write-Host "Step 1-3: Copying Chapter file $($json[$index].chapter_file)" -ForegroundColor Green
             $chapter_file_src = Get-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file)
             $chapter_file = "$([guid]::NewGuid().guid)$($chapter_file_src.Extension)"
@@ -284,7 +289,7 @@ $counter = 0
     # Load Media Info
     $medinfo = [MediaInfo]::new($MediaInfoWrapper_path)
     $medinfo.open("$enctemp\temp$extension.$extension")
-    Write-Verbose "MediaInfo: $(ConvertTo-Json $medinfo)"
+    Write-Verbose "MediaInfo: $(ConvertTo-Json $medinfo -Depth 100)"
 
 # Extracting
     #  Extracting Video
@@ -367,8 +372,16 @@ $counter = 0
 #            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($texttrack.ID-1):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
             Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($texttrack.StreamOrder):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
             Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($texttrack.StreamOrder):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
-            if (-not $(Test-Path -LiteralPath "$enctemp\$($texttrack.GUID).$($texttrack.Format)")) { Write-Error "Step 2-5: Extracting subtitle file $($texttrack.GUID).$($texttrack.Format) failed"; $errorcount++ }
-            $texttrack.Custom01 = "$($texttrack.GUID).$($texttrack.Format)"
+            switch ($texttrack.Format) {
+              "VobSub" {
+                         if (-not $($(Test-Path -LiteralPath "$enctemp\$($texttrack.GUID).sub") -and $(Test-Path -LiteralPath "$enctemp\$($texttrack.GUID).idx"))) { Write-Error "Step 2-5: Extracting subtitle file $($texttrack.GUID).$($texttrack.Format) failed"; $errorcount++ } 
+                         $texttrack.Custom01 = "$($texttrack.GUID).idx"
+                       }
+               default { 
+                         if (-not $(Test-Path -LiteralPath "$enctemp\$($texttrack.GUID).$($texttrack.Format)")) { Write-Error "Step 2-5: Extracting subtitle file $($texttrack.GUID).$($texttrack.Format) failed"; $errorcount++ }
+                         $texttrack.Custom01 = "$($texttrack.GUID).$($texttrack.Format)"
+                       }
+            }
 #            Write-Progress -Id 1 -ParentId 0 "Step 2-5: Extracting Subtitles... $counterInternal/$($medinfo.Texttracks.Count)"
 #            if ($([string]::IsNullOrEmpty($Sub_languages)) -or $($texttrack.Language -in $Sub_languages)) {
 #            }
@@ -434,7 +447,7 @@ $counter = 0
                     Write-Verbose "Process Id: $($_.EncProcess.id) exit code $($_.EncProcess.ExitCode)"
                     if ($_.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-1: Audio Encoding File $($_.SourceFileName.Name) failed"; $errorcount++ }
                 }
-                if ($errorcount -gt 0) { $totalErrorsCount += $errorcount; continue Main }
+                if ($errorcount -gt 0) { $totalErrorsCount += $errorcount; $FilesWithErrors += $file.name; continue Main }
                 Foreach ($audiotrack in $medinfo.Audiotracks) {
                     if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a")) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ } else {
                         $audiotrack.Custom01 = "$($audiotrack.GUID).m4a"
@@ -450,7 +463,7 @@ $counter = 0
         default	{ throw "Unknown Recompress Method." }
     }
 
-    if ($errorcount -gt 0) { $totalErrorsCount += $errorcount; continue Main }
+    if ($errorcount -gt 0) { $totalErrorsCount += $errorcount; $FilesWithErrors += $file.name; continue Main }
 
     #  Video Encoding
     $counterInternal = 0
@@ -577,7 +590,7 @@ $counter = 0
     }
 
     #  Check for Errors
-    if ($errorscount -gt 0) { $totalErrorsCount += $errorcount; continue Main }
+    if ($errorscount -gt 0) { $totalErrorsCount += $errorcount; $FilesWithErrors += $file.name; continue Main }
 
 # Combine MKV
     Write-Host "Step 4: Merge Files" -ForegroundColor Green
@@ -645,9 +658,9 @@ $counter = 0
 
     # Removing Temp Files
     Write-Verbose "Cleaning $enctemp"
-    if ($errorcount -eq 0) { Remove-Item $enctemp\* } else { Write-Verbose "Cleaning Skipped because of $errorcount error(s)" }
+    if ($($errorcount -eq 0) -and $(-not $Debug)) { Remove-Item $enctemp\* } else { Write-Verbose "Cleaning Skipped because of $errorcount error(s)" }
     
-    if ($del_original -and $($errorcount -eq 0)) { 
+    if ($del_original -and $($errorcount -eq 0) -and $(-not $Debug)) { 
         Write-Verbose "Removing files from source"
         if (Test-Path -LiteralPath $file.fullname) {
             Write-Verbose "Remove $($file.fullname)"
@@ -665,6 +678,8 @@ $counter = 0
         }
     }
     $totalErrorsCount += $errorcount
+    if ($errorcount) { $FilesWithErrors += $file.name }
+    if ($Debug) { break }
 }
 
 # Last Task
@@ -675,6 +690,12 @@ Write-Verbose "Result File: $out\$($file.basename).mkv"
 Write-Verbose "Result File Found: $(Test-Path -LiteralPath $out\$($file.basename).mkv)"
 Write-Verbose "Shutdown mode enabled: $shutdown"
 Write-Verbose "============================================"
-if ($totalErrorsCount) {Write-Host "Errors Count: $totalErrorsCount" -ForegroundColor Red} else {Write-Host "Errors Count: $totalErrorsCount" -ForegroundColor Green}
+if ($totalErrorsCount) {
+  Write-Host "Errors Count: $totalErrorsCount" -ForegroundColor Red
+  Write-Host "Errors in Files:" -ForegroundColor Red
+  $FilesWithErrors
+} else {
+  Write-Host "Errors Count: $totalErrorsCount" -ForegroundColor Green
+}
 Write-Host "Process completed" -ForegroundColor Green
 if ($shutdown) { shutdown -t 60 -f -s }
