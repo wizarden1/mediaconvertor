@@ -163,7 +163,7 @@ Write-Host "Converting $json_file to JSON Object"
             }
         }
     }
-    $json = $($json | Select-Object file,title,subtitle_file,chapter_file -Unique)
+    $json = $($json | Select-Object file,title,subtitle_file,chapter_file,crop_ffmpeg -Unique)
 
     $files = Get-ChildItem $in | Where-Object { $_.Extension -eq ".$extension" }
     $err_count=0
@@ -238,7 +238,10 @@ $counter = 0
 :Main Foreach ($file in $files) {
     $counter++
     $errorcount = 0
-    if ($use_json) {$index = [Array]::IndexOf($json.file, $file.name)}
+    if ($use_json) {
+      $index = [Array]::IndexOf($json.file, $file.name)
+      Write-Verbose "JSON Configuration: $($json[$index])"
+    }
     if (-not $(Test-Path -LiteralPath $file.FullName)) { continue Main }
     # Process Commands
     if ($(Test-Path -LiteralPath $(Join-Path $in "terminate"))) {
@@ -260,6 +263,10 @@ $counter = 0
     $file | Copy-Item -destination "$enctemp\temp$extension.$extension"
     if ($(Test-Path -LiteralPath "$enctemp\temp$extension.$extension")) { Write-Host "File copied succesfully" } else { Write-Error "File copy failed"; $errorcount++ }
 
+# Crop
+    if ($use_json) { $cropf = $json[$index].crop_ffmpeg }
+
+# Subtitle
     if ($use_json) {
         $subtitle_file = $json[$index].subtitle_file
         if ($($index -ge 0) -and $subtitle_file) {
@@ -273,6 +280,7 @@ $counter = 0
         }
     }
 
+# Chapters
     if ($use_json) {
         $chapter_file = $json[$index].chapter_file
         if ($($index -ge 0) -and $chapter_file) { 
@@ -487,13 +495,19 @@ $counter = 0
                 $Encode.Resize.Width = $resize[1];
                 $Encode.Resize.Height = $resize[2];
                 $Encode.Resize.Method = $resize[3];
-                $Encode.Crop.Enabled = $crop[0];
-                $Encode.Crop.Mode = $crop[1];
-                $Encode.Crop.FFMPEG = $crop[2];
-                $Encode.Crop.Left = $crop[3];
-                $Encode.Crop.Top = $crop[4];
-                $Encode.Crop.Right = $crop[5];
-                $Encode.Crop.Bottom = $crop[6];
+                if ($cropf) {
+                  $Encode.Crop.Enabled = $true;
+                  $Encode.Crop.Mode = "ffmpeg";
+                  $Encode.Crop.FFMPEG = $cropf;
+                } else {
+                  $Encode.Crop.Enabled = $crop[0];
+                  $Encode.Crop.Mode = $crop[1];
+                  $Encode.Crop.FFMPEG = $crop[2];
+                  $Encode.Crop.Left = $crop[3];
+                  $Encode.Crop.Top = $crop[4];
+                  $Encode.Crop.Right = $crop[5];
+                  $Encode.Crop.Bottom = $crop[6];
+                }
                 $Encode.Deinterlace.Enabled = $deinterlace[0];
                 $Encode.Deinterlace.Mode = $deinterlace[1];
                 $Encode.Deinterlace.Parity = $deinterlace[2];
@@ -503,7 +517,7 @@ $counter = 0
                 $Encode.CustomFilter = $CustomFilter;
                 $Encode.CustomModifier = $CustomModifier;
                 $videotrack.Custom01 = "$($videotrack.GUID).hevc"
-                Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
+                Write-Verbose "Encode config: $(ConvertTo-Json $Encode -Depth 2)"
                 $Encode.Compress();
                 $Encode = $null;
             }
@@ -522,13 +536,19 @@ $counter = 0
                 $Encode.Resize.Width = $resize[1];
                 $Encode.Resize.Height = $resize[2];
                 $Encode.Resize.Method = $resize[3];
-                $Encode.Crop.Enabled = $crop[0];
-                $Encode.Crop.Mode = $crop[1];
-                $Encode.Crop.FFMPEG = $crop[2];
-                $Encode.Crop.Left = $crop[3];
-                $Encode.Crop.Top = $crop[4];
-                $Encode.Crop.Right = $crop[5];
-                $Encode.Crop.Bottom = $crop[6];
+                if ($cropf) {
+                  $Encode.Crop.Enabled = $true;
+                  $Encode.Crop.Mode = "ffmpeg";
+                  $Encode.Crop.FFMPEG = $cropf;
+                } else {
+                  $Encode.Crop.Enabled = $crop[0];
+                  $Encode.Crop.Mode = $crop[1];
+                  $Encode.Crop.FFMPEG = $crop[2];
+                  $Encode.Crop.Left = $crop[3];
+                  $Encode.Crop.Top = $crop[4];
+                  $Encode.Crop.Right = $crop[5];
+                  $Encode.Crop.Bottom = $crop[6];
+                }
                 $Encode.Deinterlace.Enabled = $deinterlace[0];
                 $Encode.Deinterlace.Mode = $deinterlace[1];
                 $Encode.Deinterlace.Parity = $deinterlace[2];
@@ -538,7 +558,7 @@ $counter = 0
                 $Encode.CustomFilter = $CustomFilter;
                 $Encode.CustomModifier = $CustomModifier;
                 $videotrack.Custom01 = "$($videotrack.GUID).hevc"
-                Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
+                Write-Verbose "Encode config: $(ConvertTo-Json $Encode -Depth 2)"
                 $Encode.Compress();
                 $Encode = $null;
             }
@@ -560,13 +580,19 @@ $counter = 0
                     $Encode.Resize.Width = $resize[1];
                     $Encode.Resize.Height = $resize[2];
                     $Encode.Resize.Method = $resize[3];
-                    $Encode.Crop.Enabled = $crop[0];
-                    $Encode.Crop.Mode = $crop[1];
-                    $Encode.Crop.FFMPEG = $crop[2];
-                    $Encode.Crop.Left = $crop[3];
-                    $Encode.Crop.Top = $crop[4];
-                    $Encode.Crop.Right = $crop[5];
-                    $Encode.Crop.Bottom = $crop[6];
+                    if ($cropf) {
+                      $Encode.Crop.Enabled = $true;
+                      $Encode.Crop.Mode = "ffmpeg";
+                      $Encode.Crop.FFMPEG = $cropf;
+                    } else {
+                      $Encode.Crop.Enabled = $crop[0];
+                      $Encode.Crop.Mode = $crop[1];
+                      $Encode.Crop.FFMPEG = $crop[2];
+                      $Encode.Crop.Left = $crop[3];
+                      $Encode.Crop.Top = $crop[4];
+                      $Encode.Crop.Right = $crop[5];
+                      $Encode.Crop.Bottom = $crop[6];
+                    }
                     $Encode.Deinterlace.Enabled = $deinterlace[0];
                     $Encode.Deinterlace.Mode = $deinterlace[1];
                     $Encode.Deinterlace.Parity = $deinterlace[2];
@@ -575,7 +601,7 @@ $counter = 0
                     $Encode.Pulldown = $pulldown; 
                     $Encode.CustomFilter = $CustomFilter;
                     $Encode.CustomModifier = $CustomModifier;
-                    Write-Verbose "Encode config: $(ConvertTo-Json $Encode)"
+                    Write-Verbose "Encode config: $(ConvertTo-Json $Encode -Depth 2)"
                     $Encode.Compress();
                     if ($Encode.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-2: Video Encoding $($videotrack.GUID).hevc failed"; $errorcount++ }
                     $Encode = $null;
