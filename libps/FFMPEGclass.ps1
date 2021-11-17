@@ -187,7 +187,7 @@ class ffmpeg {
 
         # Encoding
         $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.Arguments = "-i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn ""$DestinationFile"""
+        $startInfo.Arguments = "-i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn -vsync passthrough ""$DestinationFile"""
         $startInfo.FileName = $this.ffmpeg_path
         Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
         if (-not $this.DryMode) {
