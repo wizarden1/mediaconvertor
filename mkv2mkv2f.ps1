@@ -1,5 +1,6 @@
 #Requires -Version 5
-#Version 4.11.1
+#Version 4.11.2
+# 4.11.2 - Rename VSync to FPSMode (vsync deprecated)
 # 4.11.1 - Add VobSub Subtitles usage
 # 4.11.0 - Add pulldown
 # 4.10.1 - Add Title to mkvmerge library
@@ -71,8 +72,8 @@ $deinterlace = @($false, "send_frame", "auto", "all") #(send_frame, send_field, 
 $CustomFilter = ""
 
 #Modifiers
-#$vsync = "passthrough"                     #passthrough, cfr, vfr, drop, auto     #Required for vfr video
-$vsync = "auto"                     #passthrough, cfr, vfr, drop, auto     #Required for vfr video
+#$fps_mode = "passthrough"                     #passthrough, cfr, vfr, drop, auto     #Required for vfr video
+$fps_mode = "auto"                     #passthrough, cfr, vfr, drop, auto     #Required for vfr video
 $CustomModifier = ""
 
 #Advanced Config
@@ -511,7 +512,7 @@ $counter = 0
                 $Encode.Deinterlace.Mode = $deinterlace[1];
                 $Encode.Deinterlace.Parity = $deinterlace[2];
                 $Encode.Deinterlace.Deint = $deinterlace[3];
-                $Encode.VSync = $vsync;
+                $Encode.FPSMode = $fps_mode;
                 $Encode.Pulldown = $pulldown; 
                 $Encode.CustomFilter = $CustomFilter;
                 $Encode.CustomModifier = $CustomModifier;
@@ -552,7 +553,7 @@ $counter = 0
                 $Encode.Deinterlace.Mode = $deinterlace[1];
                 $Encode.Deinterlace.Parity = $deinterlace[2];
                 $Encode.Deinterlace.Deint = $deinterlace[3];
-                $Encode.VSync = $vsync;
+                $Encode.FPSMode = $fps_mode;
                 $Encode.Pulldown = $pulldown; 
                 $Encode.CustomFilter = $CustomFilter;
                 $Encode.CustomModifier = $CustomModifier;
@@ -596,7 +597,7 @@ $counter = 0
                     $Encode.Deinterlace.Mode = $deinterlace[1];
                     $Encode.Deinterlace.Parity = $deinterlace[2];
                     $Encode.Deinterlace.Deint = $deinterlace[3];
-                    $Encode.VSync = $vsync;
+                    $Encode.FPSMode = $fps_mode;
                     $Encode.Pulldown = $pulldown; 
                     $Encode.CustomFilter = $CustomFilter;
                     $Encode.CustomModifier = $CustomModifier;
