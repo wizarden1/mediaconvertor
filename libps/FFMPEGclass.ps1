@@ -1,10 +1,9 @@
 ﻿#Requires -Version 5
 
-# Current Version 1.1
-# Version 1.1
-#   - add ffmpeg format of crop
-# Version 1.0
-#   - initial release
+# Current Version 1.2
+# 1.2 - rename vsync to fps_mode (vsync deprecated)
+# 1.1 - add ffmpeg format of crop
+# 1.0 - initial release
 
 enum Presets {
     ultrafast
@@ -31,7 +30,7 @@ enum tune {
     stillimage
 }
 
-enum vsync {
+enum fps_mode {
     passthrough
     cfr
     vfr
@@ -112,7 +111,7 @@ class ffmpeg {
     hidden [String]$ffmpeg_path;
     [Presets]$Preset = [Presets]::medium;
     [tune]$Tune = [tune]::none;
-    [vsync]$VSync = [vsync]::auto;
+    [fps_mode]$FPSMode = [fps_mode]::auto;
     [codec]$Codec = [codec]::libx265;
     [int16]$Quantanizer = 22;
     [bool]$Enable10bit = $true;
@@ -178,7 +177,7 @@ class ffmpeg {
         $modifiers = @()
         if ($this.Enable10bit) { $modifiers += "-pix_fmt yuv420p10le" }
         if ($this.Tune -ne "none") { $modifiers += "-tune $($this.Tune)" }
-        if ($this.VSync -ne "auto") { $modifiers += "-vsync $($this.VSync)" }
+        if ($this.FPSMode -ne "auto") { $modifiers += "-fps_mode $($this.FPSMode)" }
         if ($this.Resize.Enabled -and $($this.Resize.Method)) { $modifiers += "-sws_flags $($this.Resize.Method)" }
 
         $videoModifier = ""
@@ -187,7 +186,7 @@ class ffmpeg {
 
         # Encoding
         $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.Arguments = "-i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn -vsync passthrough ""$DestinationFile"""
+        $startInfo.Arguments = "-i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn ""$DestinationFile"""
         $startInfo.FileName = $this.ffmpeg_path
         Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
         if (-not $this.DryMode) {
