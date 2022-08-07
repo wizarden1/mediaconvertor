@@ -39,8 +39,10 @@ class EAC3 {
     $EncProcess = $null
     [System.Diagnostics.ProcessPriorityClass]$ProcessPriority = [System.Diagnostics.ProcessPriorityClass]::Idle;
 
+# Formats that EAC3 can accept directly
     hidden $inFormats = @(".AAC",".PCM",".FLAC",".AC-3",".E-AC-3",".MLP FBA",".DTS",".MPEG Audio",".TrueHD");
-    hidden $inFormatsPattern = @(".OPUS");
+# Formats that EAC3 can accept trough flac
+    hidden $inFormatsPattern = @(".OPUS",".WavPack");
 
     hidden [string]$eac3to_path;
     hidden [String]$ffmpeg_path;
@@ -133,9 +135,9 @@ class EAC3 {
                     $tempfile = """$($this.SourceFileName.FullName)"""
                 } else {
                     $tempfile = """$($this.SourceFileName.FullName).flac"""
-                    Write-Verbose "Executing: $($this.ffmpeg_path) -y -i ""$($this.SourceFileName.FullName)"" $tempfile -lowPriority"
+                    Write-Verbose "Executing: $($this.ffmpeg_path) -y -i ""$($this.SourceFileName.FullName)"" $tempfile"
                     if (-not $this.DryMode) {
-                        Start-Process -FilePath $this.ffmpeg_path -ArgumentList @("-y -i", $($this.SourceFileName.FullName), $tempfile, "-lowPriority") -NoNewWindow -Wait 
+                        Start-Process -FilePath $this.ffmpeg_path -ArgumentList @("-y -i", $($this.SourceFileName.FullName), $tempfile) -NoNewWindow -Wait 
                         if ($(Get-ChildItem $($this.SourceFileName.FullName).flac).Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been compressed." }
                     }
                 }
@@ -145,18 +147,18 @@ class EAC3 {
                     $tempfile = """$($this.SourceFileName.FullName)"""
                 } elseif ($this.inFormatsPattern -contains $this.SourceFileName.Extension) {
                     $tempfile = """$($this.SourceFileName.FullName).flac"""
-                    Write-Verbose "Executing: $($this.ffmpeg_path) -y -i ""$($this.SourceFileName.FullName)"" $tempfile -lowPriority"
+                    Write-Verbose "Executing: $($this.ffmpeg_path) -y -i ""$($this.SourceFileName.FullName)"" $tempfile"
                     if (-not $this.DryMode) {
-                        Start-Process -FilePath $this.ffmpeg_path -ArgumentList @("-y -i", $($this.SourceFileName.FullName), $tempfile, "-lowPriority") -NoNewWindow -Wait 
+                        Start-Process -FilePath $this.ffmpeg_path -ArgumentList @("-y -i", $($this.SourceFileName.FullName), $tempfile) -NoNewWindow -Wait 
                         if ($(Get-ChildItem $($this.SourceFileName.FullName).flac).Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been compressed." }
                     }
                 } else { throw "Unsupported File format. Use FFMpeg for Decode." }
             }
             FFMpeg {
                 $tempfile = """$($this.SourceFileName.FullName).flac"""
-                Write-Verbose "Executing: $($this.ffmpeg_path) -y -i ""$($this.SourceFileName.FullName)"" $tempfile -lowPriority"
+                Write-Verbose "Executing: $($this.ffmpeg_path) -y -i ""$($this.SourceFileName.FullName)"" $tempfile"
                 if (-not $this.DryMode) {
-                    Start-Process -FilePath $this.ffmpeg_path -ArgumentList @("-y -i", $($this.SourceFileName.FullName), $tempfile, "-lowPriority") -NoNewWindow -Wait 
+                    Start-Process -FilePath $this.ffmpeg_path -ArgumentList @("-y -i", $($this.SourceFileName.FullName), $tempfile) -NoNewWindow -Wait 
                     if ($(Get-ChildItem $($this.SourceFileName.FullName).flac).Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been compressed." }
                 }
             }
