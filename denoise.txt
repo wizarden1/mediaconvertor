@@ -1,0 +1,1 @@
+./ffmpeg -i DSCF2291.AVI -vf fftdnoiz=sigma=24:amount=1:block=6:overlap=0.8:prev=1:next=1 -c:v libx264 -crf 0 -preset veryslow DSCF2291.mp4
