@@ -16,6 +16,7 @@ class MediaInfoAudioTrack {
     [string]$Custom02 = "";
     [string]$Custom03 = "";
     [string]$GUID;
+    [bool]$Default = $false;
 
     MediaInfoAudioTrack () {
         $this.GUID = [guid]::NewGuid().tostring()
@@ -40,6 +41,7 @@ class MediaInfoVideoTrack {
     [string]$Custom02 = "";
     [string]$Custom03 = "";
     [string]$GUID;
+    [bool]$Default = $false;
 
     MediaInfoVideoTrack () {
         $this.GUID = [guid]::NewGuid().tostring()
@@ -60,6 +62,7 @@ class MediaInfoTextTrack {
     [string]$Custom02 = "";
     [string]$Custom03 = "";
     [string]$GUID;
+    [bool]$Default = $false;
 
     MediaInfoTextTrack () {
         $this.GUID = [guid]::NewGuid().tostring()
@@ -151,6 +154,7 @@ class MediaInfo {
             $audiotrack.CodecID = $audtrack.CodecID;
             $audiotrack.Channels = $audtrack.ChannelsString;
             $audiotrack.SamplingRate = $audtrack.SamplingRate;
+            $audiotrack.Default = $audtrack.Default -eq "Yes";
             $this.Audiotracks += $audiotrack
         }
 
@@ -169,6 +173,7 @@ class MediaInfo {
             $videotrack.BitDepth = $vidtrack.BitDepth;
             $videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
             $videotrack.CodecID = $vidtrack.CodecID;
+            $videotrack.Default = $vidtrack.Default -eq "Yes";
             $this.Videotracks += $videotrack
         }
 
@@ -183,6 +188,7 @@ class MediaInfo {
             $texttrack.Language = $txttrack.LanguageString3;
             $texttrack.StreamKindID = $txttrack.StreamKindID;
             $texttrack.CodecID = $txttrack.CodecID;
+            $texttrack.Default = $txttrack.Default -eq "Yes";
             $this.Texttracks += $texttrack
         }
 
@@ -233,6 +239,7 @@ class MediaInfo {
             $audiotrack.CodecID = $audtrack.CodecID;
             $audiotrack.Channels = $audtrack.ChannelsString;
             $audiotrack.SamplingRate = $audtrack.SamplingRate;
+            $audiotrack.Default = $audtrack.Default -eq "Yes";
             $this.Audiotracks += $audiotrack
         }
 
@@ -251,6 +258,7 @@ class MediaInfo {
             $videotrack.BitDepth = $vidtrack.BitDepth;
             $videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
             $videotrack.CodecID = $vidtrack.CodecID;
+            $videotrack.Default = $vidtrack.Default -eq "Yes";
             $this.Videotracks += $videotrack
         }
 
@@ -265,6 +273,7 @@ class MediaInfo {
             $texttrack.Language = $txttrack.LanguageString3;
             $texttrack.StreamKindID = $txttrack.StreamKindID;
             $texttrack.CodecID = $txttrack.CodecID;
+            $texttrack.Default = $txttrack.Default -eq "Yes";
             $this.Texttracks += $texttrack
         }
 

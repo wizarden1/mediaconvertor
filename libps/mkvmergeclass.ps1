@@ -7,6 +7,7 @@ class TVideoTrack {
     [string]$FileName;
     [string]$Title;
     [string]$Language;
+    [bool]$Default = $false;
     [string]$Width;
     [string]$Height;
     [string]$TimeCodeFile;
@@ -14,7 +15,7 @@ class TVideoTrack {
 
     [string] MakeCommand () {
         $this.videotrack_cli = "";
-        #	    $this.videotrack_cli += " --default-track 0";
+        if (-not $this.Default) { $this.videotrack_cli += " --default-track-flag 0:no" };
         if ($this.TimeCodeFile -and $this.UseTimeCodeFile) {
             if (Test-Path $this.TimeCodeFile -PathType Leaf) { $this.videotrack_cli += " --timecodes 0:""$($this.TimeCodeFile)""" } else { throw "ERROR: Timecode file $($this.TimeCodeFile) can't be accessed." }
         }
@@ -35,10 +36,11 @@ class TAudioTrack {
     [string]$FileName;
     [string]$Title;
     [string]$Language;
+    [bool]$Default = $false;
 
     [string] MakeCommand () {
         $this.audiotrack_cli = "";
-        #		$this.audiotrack_cli += " --default-track 0";
+        if (-not $this.Default) { $this.audiotrack_cli += " --default-track-flag 0:no" };
         if ($this.Language) { $this.audiotrack_cli += " --language 0:""$($this.Language)""" };
         #		$this.audiotrack_cli += " --audio-tracks 0"
         #		$this.audiotrack_cli += " --compression 0:none"
@@ -56,10 +58,11 @@ class TSubtitleTrack {
     [string]$FileName;
     [string]$Title;
     [string]$Language;
+    [bool]$Default = $false;
 
     [string] MakeCommand () {
         $this.subtitle_cli = "";
-        #		$this.subtitle_cli += " --default-track 0";
+        if (-not $this.Default) { $this.subtitle_cli += " --default-track-flag 0:no" };
         if ($this.Language) { $this.subtitle_cli += " --language 0:""$($this.Language)""" };
         #		$this.subtitle_cli += " --subtitle-tracks 0";
         #		$this.subtitle_cli += " --no-video --no-audio --no-track-tags --no-global-tags --no-chapters"
