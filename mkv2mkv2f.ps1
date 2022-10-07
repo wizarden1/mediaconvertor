@@ -1,5 +1,6 @@
 #Requires -Version 5
-#Version 4.12
+#Version 4.13
+# 4.13 - Add denoiser hqdn3d, rebuild crop params
 # 4.12 - Add set default track by source|language|id
 # 4.11.5 - If no languge set and force language not set - set "und" language
 # 4.11.4 - Add multiple input format through MKV temp
@@ -68,7 +69,7 @@ $set_sub_default_by = @("source", "rus")   #set_sub_default_by:<source|remove|la
 $Sub_languages = @("rus")                  #@("lng1","lng2","lng3",...)
 
 #Filters
-$crop = @($false,"ltrb","",240,0,240,0)    #crop:enabled,mode("ltrb","ffmpeg"),ffmpeg_crop_string,left,top,right,bottom  
+$crop = @($false,"ltrb","240:0:240:0")     #crop:enabled,mode("ltrb","custom"),(ffmpeg_crop_string|left:top:right:bottom)
 #$resize=@($true,1280,720,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
 #$resize=@($true,1280,960,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
 $resize = @($false, 0, 0, "lanczos", "")   #resize:enabled,width,height,method,", additional parametrs"
@@ -76,6 +77,7 @@ $resize = @($false, 0, 0, "lanczos", "")   #resize:enabled,width,height,method,"
 #$resize=@($true,1280,544,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
 $pulldown=$false
 $deinterlace = @($false, "send_frame", "auto", "all") #(send_frame, send_field, send_frame_nospatial, send_field_nospatial), (tff, bff, auto), (all, interlaced)
+$denoise = @($false, "default", "4:3:6:4.5") # denoiser hqdn3d (enable, preset, "custom values") presets = custom, ultralight, light, medium, strong, weak, default
 $CustomFilter = ""
 
 #Modifiers
@@ -512,16 +514,12 @@ $counter = 0
                 $Encode.Resize.Method = $resize[3];
                 if ($cropf) {
                     $Encode.Crop.Enabled = $true;
-                    $Encode.Crop.Mode = "ffmpeg";
-                    $Encode.Crop.FFMPEG = $cropf;
+                    $Encode.Crop.Mode = "custom";
+                    $Encode.Crop.CustomParams = $cropf;
                 } else {
                     $Encode.Crop.Enabled = $crop[0];
                     $Encode.Crop.Mode = $crop[1];
-                    $Encode.Crop.FFMPEG = $crop[2];
-                    $Encode.Crop.Left = $crop[3];
-                    $Encode.Crop.Top = $crop[4];
-                    $Encode.Crop.Right = $crop[5];
-                    $Encode.Crop.Bottom = $crop[6];
+                    $Encode.Crop.CustomParams = $crop[2];
                 }
                 $Encode.Deinterlace.Enabled = $deinterlace[0];
                 $Encode.Deinterlace.Mode = $deinterlace[1];
@@ -553,16 +551,12 @@ $counter = 0
                 $Encode.Resize.Method = $resize[3];
                 if ($cropf) {
                     $Encode.Crop.Enabled = $true;
-                    $Encode.Crop.Mode = "ffmpeg";
-                    $Encode.Crop.FFMPEG = $cropf;
+                    $Encode.Crop.Mode = "custom";
+                    $Encode.Crop.CustomParams = $cropf;
                 } else {
                     $Encode.Crop.Enabled = $crop[0];
                     $Encode.Crop.Mode = $crop[1];
-                    $Encode.Crop.FFMPEG = $crop[2];
-                    $Encode.Crop.Left = $crop[3];
-                    $Encode.Crop.Top = $crop[4];
-                    $Encode.Crop.Right = $crop[5];
-                    $Encode.Crop.Bottom = $crop[6];
+                    $Encode.Crop.CustomParams = $crop[2];
                 }
                 $Encode.Deinterlace.Enabled = $deinterlace[0];
                 $Encode.Deinterlace.Mode = $deinterlace[1];
@@ -597,16 +591,12 @@ $counter = 0
                     $Encode.Resize.Method = $resize[3];
                     if ($cropf) {
                         $Encode.Crop.Enabled = $true;
-                        $Encode.Crop.Mode = "ffmpeg";
-                        $Encode.Crop.FFMPEG = $cropf;
+                        $Encode.Crop.Mode = "custom";
+                        $Encode.Crop.CustomParams = $cropf;
                     } else {
                         $Encode.Crop.Enabled = $crop[0];
                         $Encode.Crop.Mode = $crop[1];
-                        $Encode.Crop.FFMPEG = $crop[2];
-                        $Encode.Crop.Left = $crop[3];
-                        $Encode.Crop.Top = $crop[4];
-                        $Encode.Crop.Right = $crop[5];
-                        $Encode.Crop.Bottom = $crop[6];
+                        $Encode.Crop.CustomParams = $crop[2];
                     }
                     $Encode.Deinterlace.Enabled = $deinterlace[0];
                     $Encode.Deinterlace.Mode = $deinterlace[1];

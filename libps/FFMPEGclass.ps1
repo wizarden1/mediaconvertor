@@ -1,10 +1,18 @@
 ﻿#Requires -Version 5
 
-# Current Version 1.2
+# Current Version 1.3
+# 1.3 - rebuild class TCrop with get/set values, add denoise by Thqdn3d class
 # 1.2 - rename vsync to fps_mode (vsync deprecated)
 # 1.1 - add ffmpeg format of crop
 # 1.0 - initial release
 
+# codecs
+enum codec { 
+    libx264
+    libx265
+}
+
+# encoder
 enum Presets {
     ultrafast
     superfast
@@ -38,6 +46,7 @@ enum fps_mode {
     auto
 }
 
+# filters
 enum yadif_mode {
     send_frame
     send_field
@@ -70,21 +79,66 @@ enum ResizeMethods {
     spline
 }
 
-enum codec { 
-    libx264
-    libx265
-}
-class TCrop {
-    [bool]$Enabled = $false;
-# ltrb, ffmpeg
-    [string]$Mode = "ltrb";
-    [int]$Left = 0;
-    [int]$Top = 0;
-    [int]$Right = 0;
-    [int]$Bottom = 0;
-    [string]$FFMPEG = "";
+enum crop_mode {
+    ltrb
+    custom
 }
 
+enum denoise_preset {
+    default
+    ultralight
+    light
+    medium
+    strong
+    weak
+    custom
+}
+
+# Types
+# crop
+class TCrop {
+    [bool]$Enabled = $false;
+# ltrb, custom
+    hidden $_mode   = $($this | Add-Member -Name Mode -MemberType ScriptProperty -Value { return $this._mode } -SecondValue { param($value); $this._mode = [crop_mode]$value; $this.UpdateCli() })
+    hidden $_customParams = $($this | Add-Member -Name CustomParams -MemberType ScriptProperty -Value { return $this._customParams } -SecondValue { 
+        param($value)
+        $this._customParams = [string]$value
+        if ($this.Mode -eq "ltrb") {
+            if ([int]$this._customParams.Split(":").Count -ne 4) { throw "ERROR: Incorrect crop parameters" }
+            $this._left = [int]$this._customParams.Split(":")[0];
+            $this._top = [int]$this._customParams.Split(":")[1];
+            $this._right = [int]$this._customParams.Split(":")[2];
+            $this._bottom = [int]$this._customParams.Split(":")[3];
+        }
+        $this.UpdateCli()
+    })
+    hidden $_left   = $($this | Add-Member -Name Left -MemberType ScriptProperty -Value { return $this._left } -SecondValue { param($value); $this._left = [int]$value; $this.UpdateCli() })
+    hidden $_top    = $($this | Add-Member -Name Top -MemberType ScriptProperty -Value { return $this._top } -SecondValue { param($value); $this._top = [int]$value; $this.UpdateCli() })
+    hidden $_right  = $($this | Add-Member -Name Right -MemberType ScriptProperty -Value { return $this._right } -SecondValue { param($value); $this._right = [int]$value; $this.UpdateCli() })
+    hidden $_bottom = $($this | Add-Member -Name Bottom -MemberType ScriptProperty -Value { return $this._bottom } -SecondValue { param($value); $this._bottom = [int]$value; $this.UpdateCli() })
+    hidden $_cli    = $($this | Add-Member -Name cli -MemberType ScriptProperty -Value { $($this._cli) })
+
+    # Constructor
+    TCrop () {
+        $this._left = 0;
+        $this._top = 0;
+        $this._right = 0;
+        $this._bottom = 0;
+        $this._customParams = "0:0:0:0";
+        $this._mode = [crop_mode]::ltrb;
+        $this.UpdateCli()
+    }
+
+    hidden [void]UpdateCli() {
+         switch ($this.Mode) {
+              "ltrb"   { $this._cli = "crop=w=in_w-$($this.Left)-$($this.Right):h=in_h-$($this.Top)-$($this.Bottom):x=$($this.Left):y=$($this.Top)" }
+              "custom" { $this._cli = "crop=$($this._customParams)" }
+              default { throw "ERROR: Unknown Crop Mode" }
+         }
+    }
+}
+
+# deinterlace
 class TYadif {
     [bool]$Enabled = $false;
     [string]$Mode = [yadif_mode]::send_frame;
@@ -98,6 +152,59 @@ class TResize {
     [int]$Width = 0;
     [int]$Height = 0;
     [ResizeMethods]$Method = [ResizeMethods]::lanczos;
+}
+
+# denoise
+class Thqdn3d {
+    [bool]$Enabled = $false;
+    hidden [float]$luma_spatial = 4.0;                                                      # A non-negative floating point number which specifies spatial luma strength. It defaults to 4.0.
+    hidden [float]$chroma_spatial = 3.0 * $this.luma_spatial / 4.0;                         # A non-negative floating point number which specifies spatial chroma strength. It defaults to 3.0*luma_spatial/4.0.
+    hidden [float]$luma_tmp = 6.0 * $this.luma_spatial / 4.0;                               # A floating point number which specifies luma temporal strength. It defaults to 6.0*luma_spatial/4.0.
+    hidden [float]$chroma_tmp = $this.luma_tmp * $this.chroma_spatial / $this.luma_spatial; # A floating point number which specifies chroma temporal strength. It defaults to luma_tmp*chroma_spatial/luma_spatial. 
+
+    hidden $_preset       = $($this | Add-Member -Name Preset -MemberType ScriptProperty -Value { return $this._preset } -SecondValue { param($value); $this._preset = [denoise_preset]$value; $this.UpdateCli() })
+    hidden $_customParams = $($this | Add-Member -Name CustomParams -MemberType ScriptProperty -Value { return $this._customParams } -SecondValue { param($value); $this._customParams = [string]$value; $this.UpdateCli() })
+    hidden $_cli          = $($this | Add-Member -Name cli -MemberType ScriptProperty -Value { $($this._cli) })
+
+    # Constructor
+    Thqdn3d () {
+        $this._preset = [denoise_preset]::default;
+        $this._customParams = "4:3:6:4.5";
+        $this.UpdateCli()
+    }
+
+    # Functions
+    hidden [void]UpdateCli() {
+        Switch ($this._preset) {
+            "default" {
+                $this._cli = "hqdn3d"
+            }
+            "ultralight" {
+#                $this.luma_spatial = 1
+#                $this.chroma_spatial = 1
+#                $this.luma_tmp = 3
+#                $this.chroma_tmp = 3
+#                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
+                default { throw "ERROR: Preset not implemented yet" }
+            }
+            "light" {
+                default { throw "ERROR: Preset not implemented yet" }
+            }
+            "medium" {
+                default { throw "ERROR: Preset not implemented yet" }
+            }
+            "strong" {
+                default { throw "ERROR: Preset not implemented yet" }
+            }
+            "weak" {
+                default { throw "ERROR: Preset not implemented yet" }
+            }
+            "custom" {
+                $this._cli = "hqdn3d=$($this._customParams)"
+            }
+            default { throw "ERROR: Unknown denoise preset" }
+        }
+    }
 }
 
 #preset: ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
@@ -127,6 +234,7 @@ class ffmpeg {
     [TCrop]$Crop = [TCrop]::new();
     [TResize]$Resize = [TResize]::new();
     [TYadif]$Deinterlace = [TYadif]::new();
+    [Thqdn3d]$Denoise = [Thqdn3d]::new();
 
     [System.Diagnostics.ProcessPriorityClass]$ProcessPriority = [System.Diagnostics.ProcessPriorityClass]::Idle;
 
@@ -154,15 +262,10 @@ class ffmpeg {
 		
         # Creating Filter
         $filters = @()
-        if ($this.Crop.Enabled) {
-          switch ($this.Crop.Mode) {
-               "ltrb" { $filters += "crop=w=in_w-$($this.Crop.Left)-$($this.Crop.Right):h=in_h-$($this.Crop.Top)-$($this.Crop.Bottom):x=$($this.Crop.Left):y=$($this.Crop.Top)" }
-               "ffmpeg" { $filters += "crop=$($this.Crop.FFMPEG)" }
-               default { throw "ERROR: Unknown Crop Mode" }
-          }
-        }
+        if ($this.Crop.Enabled) { $filters += $this.Crop.cli }
         if ($this.Resize.Enabled) { $filters += "scale=$($this.Resize.Width):$($this.Resize.Height)" }
         if ($this.Deinterlace.Enabled) { $filters += "yadif=$($this.Deinterlace.Mode):$($this.Deinterlace.Parity):$($this.Deinterlace.Deint)" }
+        if ($this.Denoise.Enabled) { $filters += $this.Denoise.cli }
         if ($this.Pulldown) {
           $filters += "fieldmatch"
           $filters += "decimate" 
