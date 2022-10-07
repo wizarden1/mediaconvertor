@@ -1,6 +1,7 @@
 ﻿#Requires -Version 5
 
-# Current Version 1.3
+# Current Version 1.3.1
+# 1.3.1 - add denoise presets
 # 1.3 - rebuild class TCrop with get/set values, add denoise by Thqdn3d class
 # 1.2 - rename vsync to fps_mode (vsync deprecated)
 # 1.1 - add ffmpeg format of crop
@@ -180,24 +181,39 @@ class Thqdn3d {
                 $this._cli = "hqdn3d"
             }
             "ultralight" {
-#                $this.luma_spatial = 1
-#                $this.chroma_spatial = 1
-#                $this.luma_tmp = 3
-#                $this.chroma_tmp = 3
-#                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
-                default { throw "ERROR: Preset not implemented yet" }
+                $this.luma_spatial = 1
+                $this.chroma_spatial = 0.7
+                $this.luma_tmp = 1
+                $this.chroma_tmp = 2
+                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
             }
             "light" {
-                default { throw "ERROR: Preset not implemented yet" }
+                $this.luma_spatial = 2
+                $this.chroma_spatial = 1
+                $this.luma_tmp = 2
+                $this.chroma_tmp = 3
+                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
             }
             "medium" {
-                default { throw "ERROR: Preset not implemented yet" }
+                $this.luma_spatial = 3
+                $this.chroma_spatial = 2
+                $this.luma_tmp = 2
+                $this.chroma_tmp = 3
+                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
             }
             "strong" {
-                default { throw "ERROR: Preset not implemented yet" }
+                $this.luma_spatial = 7
+                $this.chroma_spatial = 7
+                $this.luma_tmp = 5
+                $this.chroma_tmp = 5
+                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
             }
             "weak" {
-                default { throw "ERROR: Preset not implemented yet" }
+                $this.luma_spatial = 2
+                $this.chroma_spatial = 1
+                $this.luma_tmp = 2
+                $this.chroma_tmp = 3
+                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
             }
             "custom" {
                 $this._cli = "hqdn3d=$($this._customParams)"
