@@ -1,5 +1,6 @@
 #Requires -Version 5
-#Version 4.14
+#Version 4.14.1
+# 4.14.1 - Add format webm
 # 4.14 - Move main program to different file
 # 4.13 - Add denoiser hqdn3d, rebuild crop params
 # 4.12 - Add set default track by source|language|id
@@ -35,7 +36,7 @@
 $libs = @("MediaInfoclass", "mkvmergeclass", "FFMPEGclass", "EAC3class")
 
 $extension = "MKV"
-$extensions = @(".MKV", ".AVI", ".M4V", ".MOV", ".MP4", ".MPG")
+$extensions = @(".MKV", ".AVI", ".M4V", ".MOV", ".MP4", ".MPG", ".WEBM")
 
 #General Paths
 $root_path = $(Get-Location).Path
