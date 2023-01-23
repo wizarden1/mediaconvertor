@@ -8,29 +8,30 @@ param (
 )
 #Config
 
-#Audio
-$take_audio_from_source = $false
-#$take_audio_from_source = $true
-$take_audio_track_name_from_source = $true
-$set_audio_default_by = @("source", "rus")     #set_audio_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
-$set_audio_languages = @($false, "rus", "eng") #@("Use manual set","track ID/default","track ID",...)
-$select_audio_by = @("all", @("rus"))          #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
-$RecompressMethod = "Decoder"                  #"AviSynth"|"Decoder"
-$DecodeAutoMode = "Pattern"                    #"Auto"|"Pattern"|"FFMpeg"|"Eac3to"
-$AsyncEncoding = $true
-
 #Video
 $take_video_from_source = $false
 $video_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
+$take_video_track_name_from_source = $false
 $set_video_default_by = @("source", "rus") #set_video_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
 $use_timecode_file = $true
 $tune = "grain"                            #tune(x265):animation,grain,psnr,ssim,fastdecode,zerolatency tune(x264):film,animation,grain,stillimage,fastdecode,zerolatency
-$DecompressSource = "Direct"	           #"FFVideoSource"|"DirectShowSource"|"Direct"
 $Copy_Chapters = $true
 $quantanizer = 24
 $preset = "medium"		           #ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
 #$preset = "ultrafast"
 $codec = "libx265"                         #libx264,libx265
+$override_fps = ""
+
+#Audio
+#$take_audio_from_source = $false
+$take_audio_from_source = $true
+$take_audio_track_name_from_source = $true
+$set_audio_default_by = @("source", "rus")     #set_audio_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
+$set_audio_languages = @("source", @("jpn"))     #set_audio_languages:<source|all|trackid>, <list of languages|number of tracks> example1: @("all",@("jpn")), example2: @("trackid",@("jpn","jpn","jpn"))
+$select_audio_by = @("all", @("rus"))          #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
+$DecodeAutoMode = "Pattern"                    #"Auto"|"Pattern"|"FFMpeg"|"Eac3to"
+$AsyncEncoding = $true
+$UpscaleToStereo = $false                      #if source track is mono, it will be upscaled to stereo
 
 #Subtitles
 $Copy_Subtitles = $true

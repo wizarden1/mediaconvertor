@@ -235,6 +235,7 @@ class ffmpeg {
     [Presets]$Preset = [Presets]::medium;
     [tune]$Tune = [tune]::none;
     [fps_mode]$FPSMode = [fps_mode]::auto;
+    [string]$FramRate = "24";
     [codec]$Codec = [codec]::libx265;
     [int16]$Quantanizer = 22;
     [bool]$Enable10bit = $true;
@@ -305,7 +306,9 @@ class ffmpeg {
 
         # Encoding
         $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-        $startInfo.Arguments = "-i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn ""$DestinationFile"""
+#        if ($this.FramRate -gt 0) { $FramRate = "-r $($this.FramRate)" } else { $FramRate = "" }
+        $startInfo.Arguments = "-r $($this.FramRate) -i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn -r $($this.FramRate) ""$DestinationFile"""
+#        $startInfo.Arguments = "$FramRate -i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn $FramRate ""$DestinationFile"""
         $startInfo.FileName = $this.ffmpeg_path
         Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
         if (-not $this.DryMode) {

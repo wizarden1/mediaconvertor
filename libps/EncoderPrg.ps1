@@ -1,5 +1,10 @@
 #Requires -Version 5
-#Version 4.14.1
+#Version 4.15.2
+# 4.15.2 - Add upscale to stereo if source is mono
+# 4.15.1 - Add $take_video_track_name_from_source
+# 4.15.0 - Remove AviSync, Rebuild Set Audio Languge
+# 4.14.3 - Fix Bug of select audio by language and trackid
+# 4.14.2 - Fix Bug of set default subitle language if subtitle as external file
 # 4.14.1 - Add format webm
 # 4.14 - Move main program to different file
 # 4.13 - Add denoiser hqdn3d, rebuild crop params
@@ -262,37 +267,35 @@ $counter = 0
 
 # Extracting
     #  Extracting Video
-    if (($DecompressSource -eq "FFVideoSource") -or ($DecompressSource -eq "DirectShowSource")) {
-        Write-Host "Step 2-1: Extracting Videotrack... Skipped, Decompress method $DecompressSource is Used" -ForegroundColor Green
-    } else {
-        $counterInternal = 0
-        Foreach ($videotrack in $medinfo.Videotracks) {
-            $counterInternal++
-#            Write-Progress -Id 1 -ParentId 0 "Step 2-1: Extracting Videotrack... $counterInternal/$($medinfo.Videotracks.Count)"
-            Write-Host "Step 2-1: Extracting Videotrack... $counterInternal/$($medinfo.Videotracks.Count)" -ForegroundColor Green
-#            Write-Verbose "mkvextract Command Line: $mkvmerge_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
-#            Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
-            Write-Verbose "mkvextract Command Line: $mkvmerge_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.StreamOrder) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
-            Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.StreamOrder) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
-            if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.GUID).$($videotrack.Format).src")) { Write-Error "Step 2-1: Extracting Videotrack file $($videotrack.GUID).$($videotrack.Format).src failed"; $errorcount++ }
-        }
+    $counterInternal = 0
+    Foreach ($videotrack in $medinfo.Videotracks) {
+        $counterInternal++
+#        Write-Progress -Id 1 -ParentId 0 "Step 2-1: Extracting Videotrack... $counterInternal/$($medinfo.Videotracks.Count)"
+        Write-Host "Step 2-1: Extracting Videotrack... $counterInternal/$($medinfo.Videotracks.Count)" -ForegroundColor Green
+#        Write-Verbose "mkvextract Command Line: $mkvmerge_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+#        Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+        Write-Verbose "mkvextract Command Line: $mkvmerge_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.StreamOrder) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+        Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.StreamOrder) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+        if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.GUID).$($videotrack.Format).src")) { Write-Error "Step 2-1: Extracting Videotrack file $($videotrack.GUID).$($videotrack.Format).src failed"; $errorcount++ }
     }
 
     #  Extracting Audio
-    if ($RecompressMethod -eq "AviSynth") {
-        Write-Host "Step 2-2: Extracting Audiotrack... Skipped, Recompress method AviSynth is Used" -ForegroundColor Green
-    } else {
-        $counterInternal = 0
-        Foreach ($audiotrack in $medinfo.Audiotracks) {
-            $counterInternal++
-#            Write-Progress -Id 1 -ParentId 0 "Step 2-2: Extracting Audiotrack... $counterInternal/$($medinfo.Audiotracks.Count)"
-            Write-Host "Step 2-2: Extracting Audiotrack... $counterInternal/$($medinfo.Audiotracks.Count)" -ForegroundColor Green
-#            Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
-#            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
-            Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.StreamOrder):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
-            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.StreamOrder):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
-            if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)")) { Write-Error "Step 2-2: Extracting Audiotrack file $($audiotrack.GUID).$($audiotrack.Format) failed"; $errorcount++ }
-        }
+    $counterInternal = 0
+    Foreach ($audiotrack in $medinfo.Audiotracks) {
+        $counterInternal++
+	Switch ($select_audio_by[0])
+	{
+            "language" {Write-Verbose "Selection audio track(s) by $($select_audio_by[0]) with $($select_audio_by[1]) track language $($audiotrack.Language): $($audiotrack.Language -in $select_audio_by[1])"; if ($audiotrack.Language -in $select_audio_by[1]){$audiotrack.Custom02 = $true}}
+            "trackid" {Write-Verbose "Selection audio track(s) by $($select_audio_by[0]) with $($select_audio_by[1]) track ID $($audiotrack.StreamKindID): $($audiotrack.StreamKindID -in $select_audio_by[1])"; if ($audiotrack.StreamKindID -in $select_audio_by[1]){$audiotrack.Custom02 = $true}}
+            default {Write-Verbose "Selection all audio track(s)"; $audiotrack.Custom02 = $true}
+	}
+#        Write-Progress -Id 1 -ParentId 0 "Step 2-2: Extracting Audiotrack... $counterInternal/$($medinfo.Audiotracks.Count)"
+        Write-Host "Step 2-2: Extracting Audiotrack... $counterInternal/$($medinfo.Audiotracks.Count)" -ForegroundColor Green
+#        Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+#        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+        Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.StreamOrder):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.StreamOrder):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+        if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)")) { Write-Error "Step 2-2: Extracting Audiotrack file $($audiotrack.GUID).$($audiotrack.Format) failed"; $errorcount++ }
     }
 
     #  Extracting Timecode
@@ -362,74 +365,59 @@ $counter = 0
 
 # Encoding
     # Audio Encoding
-    Switch ($RecompressMethod) {
-        "AviSynth" {
-            Copy-Item $(Join-Path $root_path "AviSynthtemplate.avs") "$enctemp\videofile.avs"
-            "DirectShowSource(""$($file.FullName)"")" | Out-File "$enctemp\videofile.avs" -Append -Encoding Ascii
-            Write-Verbose "AviSynth Command Line: $wavi ""$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
-            Start-Process -Wait -NoNewWindow -FilePath $wavi -ArgumentList """$enctemp\videofile.avs"" ""$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"""
+    $counterInternal = 0
+    $audio_enc_processes = @()
+    Write-Verbose "Audiotracks Total Count: $($medinfo.Audiotracks.Count)"
+    Write-Verbose "Audiotracks To Encode Count: $($($medinfo.Audiotracks | where {$_.Custom02}).Count)"
+    Foreach ($audiotrack in $medinfo.Audiotracks) {
+        $audiotrack.Custom01 = "$($audiotrack.GUID).$($audiotrack.Format)"
+        Write-Verbose "Selection audio track(s) by $($select_audio_by[0]) with $($select_audio_by[1]) track ID $($audiotrack.StreamKindID): $($audiotrack.Custom02)"
+    }
+    if ($take_audio_from_source) { 
+        Write-Host "Selected Take Audio From Source - Skipped" -ForegroundColor Green 
+    } else {
+        Write-Verbose "Async Mode Set to: $($AsyncEncoding -and ($($($medinfo.Audiotracks | where {$_.Custom02}).Count) -gt 1))"
+        Foreach ($audiotrack in $($medinfo.Audiotracks | where {$_.Custom02})) {
+            $counterInternal++
+#            Write-Progress -Id 1 -ParentId 0 "Step 3-1: Audio Encoding File $counterInternal/$($medinfo.Audiotracks.Count)"
+            Write-Host "Step 3-1: Audio Encoding File $counterInternal/$($($medinfo.Audiotracks | where {$_.Custom02}).Count): $($audiotrack.GUID).$($audiotrack.Format)" -ForegroundColor Green
+            Write-Verbose "Audiotrack: $(ConvertTo-Json $audiotrack -Depth 100)"
             $eac3 = [EAC3]::new($eac3to, $ffmpeg_path)
-            $eac3.SourceFileName = "$enctemp\$($medinfo.Audiotracks[0].GUID).pcm"
+            $eac3.DecodeAutoMode = $DecodeAutoMode
+            $eac3.UpscaleToStereo = $UpscaleToStereo -and $audiotrack.Channels -eq 1
+            $eac3.SourceFileName = "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"
             $eac3.DestinationFileName = "$enctemp\$($audiotrack.GUID).m4a"
+            $eac3.Async = $AsyncEncoding -and ($($($medinfo.Audiotracks | where {$_.Custom02}).Count) -gt 1)
             $eac3.Compress()
-            if (($eac3.EncProcess.ExitCode -gt 0) -or $(-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a"))) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ }
-            $medinfo.Audiotracks[0].Custom01 = "$($medinfo.Audiotracks[0].GUID).m4a"
-            $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
-            $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
-            $audiotrack.Format = $medinfoAud.Audiotracks[0].Format
-            $medinfoAud.Close()
+            $audio_enc_processes += $eac3
             $eac3 = $null
         }
-        "Decoder" {
-            $counterInternal = 0
-            $audio_enc_processes = @()
-            Write-Verbose "Audiotracks Count: $($medinfo.Audiotracks.Count)"
-            Write-Verbose "Async Mode Set to: $($AsyncEncoding -and ($medinfo.Audiotracks.Count -gt 1))"
-            Foreach ($audiotrack in $medinfo.Audiotracks) {
-                $counterInternal++
-#                Write-Progress -Id 1 -ParentId 0 "Step 3-1: Audio Encoding File $counterInternal/$($medinfo.Audiotracks.Count)"
-                Write-Host "Step 3-1: Audio Encoding File $counterInternal/$($medinfo.Audiotracks.Count): $($audiotrack.GUID).$($audiotrack.Format)" -ForegroundColor Green
-                $audiotrack.Custom01 = "$($audiotrack.GUID).$($audiotrack.Format)"
-                if (-not $take_audio_from_source) {
-                    $eac3 = [EAC3]::new($eac3to, $ffmpeg_path)
-                    $eac3.DecodeAutoMode = $DecodeAutoMode
-                    $eac3.SourceFileName = "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"
-                    $eac3.DestinationFileName = "$enctemp\$($audiotrack.GUID).m4a"
-                    $eac3.Async = $AsyncEncoding -and ($medinfo.Audiotracks.Count -gt 1)
-                    $eac3.Compress()
-                    $audio_enc_processes += $eac3
-                    $eac3 = $null
-                } else {Write-Host "Selected Take Audio From Source - Skipped" -ForegroundColor Green}
-            }
-            if (-not $take_audio_from_source) {
-                Write-Verbose "Process List:"
-                $audio_enc_processes | ForEach-Object {
-                    Write-Verbose "Process Id: $($_.EncProcess.id) for encoding file $($_.SourceFileName.Name)"
-                }
-                Try {
-                    Wait-Process -InputObject $audio_enc_processes.EncProcess
-                }
-                Finally {
-                    Get-Process -InputObject  $audio_enc_processes.EncProcess | Stop-Process
-                }
-                $audio_enc_processes | ForEach-Object {
-                    Write-Verbose "Process Id: $($_.EncProcess.id) exit code $($_.EncProcess.ExitCode)"
-                    if ($_.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-1: Audio Encoding File $($_.SourceFileName.Name) failed"; $errorcount++ }
-                }
-                if ($errorcount -gt 0) { $totalErrorsCount += $errorcount; $FilesWithErrors += $file.name; continue Main }
-                Foreach ($audiotrack in $medinfo.Audiotracks) {
-                    if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a")) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ } else {
-                        $audiotrack.Custom01 = "$($audiotrack.GUID).m4a"
-                        $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
-                        $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
-                        $audiotrack.Format = $medinfoAud.Audiotracks[0].Format
-                        $medinfoAud.Close()
-                    }
-                }
-                Write-Host "Encoding finished succesfuly"
-            } else {Write-Host "Selected Take Audio From Source - Skipped" -ForegroundColor Green}
+        Write-Verbose "Process List:"
+        $audio_enc_processes | ForEach-Object {
+            Write-Verbose "Process Id: $($_.EncProcess.id) for encoding file $($_.SourceFileName.Name)"
         }
-        default	{ throw "Unknown Recompress Method." }
+        Try {
+            Wait-Process -InputObject $audio_enc_processes.EncProcess
+        }
+        Finally {
+            Get-Process -InputObject  $audio_enc_processes.EncProcess | Stop-Process
+        }
+        $audio_enc_processes | ForEach-Object {
+            Write-Verbose "Process Id: $($_.EncProcess.id) exit code $($_.EncProcess.ExitCode)"
+            if ($_.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-1: Audio Encoding File $($_.SourceFileName.Name) failed"; $errorcount++ }
+        }
+        if ($errorcount -gt 0) { $totalErrorsCount += $errorcount; $FilesWithErrors += $file.name; continue Main }
+        Foreach ($audiotrack in $($medinfo.Audiotracks | where {$_.Custom02})) {
+            if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).m4a")) { Write-Error "Step 3-1: Audio Encoding File $($audiotrack.GUID).m4a failed"; $errorcount++ } else {
+                $audiotrack.Custom01 = "$($audiotrack.GUID).m4a"
+                $medinfoAud = [MediaInfo]::new($MediaInfoWrapper_path)
+                $medinfoAud.open("$enctemp\$($audiotrack.GUID).m4a")
+                $audiotrack.Format = $medinfoAud.Audiotracks[0].Format
+                $audiotrack.Channels = $medinfoAud.Audiotracks[0].Channels
+                $medinfoAud.Close()
+            }
+        }
+        Write-Host "Encoding finished succesfuly"
     }
 
     if ($errorcount -gt 0) { $totalErrorsCount += $errorcount; $FilesWithErrors += $file.name; continue Main }
@@ -440,137 +428,60 @@ $counter = 0
         $counterInternal++
         Write-Host "Step 3-2: Video Encoding... $counterInternal/$($medinfo.Videotracks.Count)" -ForegroundColor Green
 #        Write-Progress -Id 1 -ParentId 0 "Step 3-2: Video Encoding... $counterInternal/$($medinfo.Videotracks.Count)"
-        Switch ($DecompressSource) {
-            "DirectShowSource" {
-                Write-Verbose "DirectShowSource Selected"
-                Copy-Item $(Join-Path $root_path "AviSynthtemplate.avs") "$enctemp\$($videotrack.GUID).avs"
-                "DirectShowSource(""$($videotrack.GUID).$($videotrack.Format)"")" | Out-File "$enctemp\$($videotrack.GUID).avs" -Append -Encoding Ascii
-                $Encode = [ffmpeg]::new($ffmpeg_path);
-                $Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).avs";
-                $Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).hevc";
-                $Encode.Quantanizer = $quantanizer;
-                $Encode.Preset = $preset;
-                $Encode.Tune = $tune;
-                $Encode.Codec = $codec;
-                $Encode.Resize.Enabled = $resize[0];
-                $Encode.Resize.Width = $resize[1];
-                $Encode.Resize.Height = $resize[2];
-                $Encode.Resize.Method = $resize[3];
-                if ($cropf) {
-                    $Encode.Crop.Enabled = $true;
-                    $Encode.Crop.Mode = "custom";
-                    $Encode.Crop.CustomParams = $cropf;
-                } else {
-                    $Encode.Crop.Enabled = $crop[0];
-                    $Encode.Crop.Mode = $crop[1];
-                    $Encode.Crop.CustomParams = $crop[2];
-                }
-                $Encode.Deinterlace.Enabled = $deinterlace[0];
-                $Encode.Deinterlace.Mode = $deinterlace[1];
-                $Encode.Deinterlace.Parity = $deinterlace[2];
-                $Encode.Deinterlace.Deint = $deinterlace[3];
-                $Encode.Denoise.Enabled = $denoise[0];
-                $Encode.Denoise.Preset = $denoise[1];
-                $Encode.Denoise.CustomParams = $denoise[2];
-                $Encode.FPSMode = $fps_mode;
-                $Encode.Pulldown = $pulldown; 
-                $Encode.CustomFilter = $CustomFilter;
-                $Encode.CustomModifier = $CustomModifier;
-                $videotrack.Custom01 = "$($videotrack.GUID).hevc"
-                Write-Verbose "Encode config: $(ConvertTo-Json $Encode -Depth 2)"
-                $Encode.Compress();
-                $Encode = $null;
+        Write-Verbose "Videotrack: $(ConvertTo-Json $videotrack -Depth 100)"
+        $videotrack.Custom01 = "$($videotrack.GUID).$($videotrack.Format).src"
+        if (-not $take_video_from_source) {
+            Write-Host "Source File: $($videotrack.Custom01)" -ForegroundColor Green
+            $videotrack.Custom01 = "$($videotrack.GUID).hevc"
+            Write-Host "Destination File: $($videotrack.Custom01)" -ForegroundColor Green
+            $Encode = [ffmpeg]::new($ffmpeg_path);
+            $Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).$($videotrack.Format).src";
+            $Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).hevc";
+            $Encode.Quantanizer = $quantanizer;
+            $Encode.Preset = $preset;
+            $Encode.Tune = $tune;
+            $Encode.Codec = $codec;
+            $Encode.Resize.Enabled = $resize[0];
+            $Encode.Resize.Width = $resize[1];
+            $Encode.Resize.Height = $resize[2];
+            $Encode.Resize.Method = $resize[3];
+            if ($cropf) {
+                $Encode.Crop.Enabled = $true;
+                $Encode.Crop.Mode = "custom";
+                $Encode.Crop.CustomParams = $cropf;
+            } else {
+                $Encode.Crop.Enabled = $crop[0];
+                $Encode.Crop.Mode = $crop[1];
+                $Encode.Crop.CustomParams = $crop[2];
             }
-            "FFVideoSource" {
-                Write-Verbose "FFVideoSource Selected"
-                Copy-Item $(Join-Path $root_path "AviSynthtemplate.avs") "$enctemp\$($videotrack.GUID).avs"
-                "FFVideoSource(""$($videotrack.GUID).$($videotrack.Format)"")" | Out-File "$enctemp\$($videotrack.GUID).avs" -Append -Encoding Ascii
-                $Encode = [ffmpeg]::new($ffmpeg_path);
-                $Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).avs";
-                $Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).hevc";
-                $Encode.Quantanizer = $quantanizer;
-                $Encode.Preset = $preset;
-                $Encode.Tune = $tune;
-                $Encode.Codec = $codec;
-                $Encode.Resize.Enabled = $resize[0];
-                $Encode.Resize.Width = $resize[1];
-                $Encode.Resize.Height = $resize[2];
-                $Encode.Resize.Method = $resize[3];
-                if ($cropf) {
-                    $Encode.Crop.Enabled = $true;
-                    $Encode.Crop.Mode = "custom";
-                    $Encode.Crop.CustomParams = $cropf;
-                } else {
-                    $Encode.Crop.Enabled = $crop[0];
-                    $Encode.Crop.Mode = $crop[1];
-                    $Encode.Crop.CustomParams = $crop[2];
-                }
-                $Encode.Deinterlace.Enabled = $deinterlace[0];
-                $Encode.Deinterlace.Mode = $deinterlace[1];
-                $Encode.Deinterlace.Parity = $deinterlace[2];
-                $Encode.Deinterlace.Deint = $deinterlace[3];
-                $Encode.Denoise.Enabled = $denoise[0];
-                $Encode.Denoise.Preset = $denoise[1];
-                $Encode.Denoise.CustomParams = $denoise[2];
-                $Encode.FPSMode = $fps_mode;
-                $Encode.Pulldown = $pulldown; 
-                $Encode.CustomFilter = $CustomFilter;
-                $Encode.CustomModifier = $CustomModifier;
-                $videotrack.Custom01 = "$($videotrack.GUID).hevc"
-                Write-Verbose "Encode config: $(ConvertTo-Json $Encode -Depth 2)"
-                $Encode.Compress();
-                $Encode = $null;
-            }
-            "Direct" {
-                Write-Verbose "Direct Selected"
-                $videotrack.Custom01 = "$($videotrack.GUID).$($videotrack.Format).src"
-                if (-not $take_video_from_source) {
-                    Write-Host "Source File: $($videotrack.Custom01)" -ForegroundColor Green
-                    $videotrack.Custom01 = "$($videotrack.GUID).hevc"
-                    Write-Host "Destination File: $($videotrack.Custom01)" -ForegroundColor Green
-                    $Encode = [ffmpeg]::new($ffmpeg_path);
-                    $Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).$($videotrack.Format).src";
-                    $Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).hevc";
-                    $Encode.Quantanizer = $quantanizer;
-                    $Encode.Preset = $preset;
-                    $Encode.Tune = $tune;
-                    $Encode.Codec = $codec;
-                    $Encode.Resize.Enabled = $resize[0];
-                    $Encode.Resize.Width = $resize[1];
-                    $Encode.Resize.Height = $resize[2];
-                    $Encode.Resize.Method = $resize[3];
-                    if ($cropf) {
-                        $Encode.Crop.Enabled = $true;
-                        $Encode.Crop.Mode = "custom";
-                        $Encode.Crop.CustomParams = $cropf;
-                    } else {
-                        $Encode.Crop.Enabled = $crop[0];
-                        $Encode.Crop.Mode = $crop[1];
-                        $Encode.Crop.CustomParams = $crop[2];
-                    }
-                    $Encode.Deinterlace.Enabled = $deinterlace[0];
-                    $Encode.Deinterlace.Mode = $deinterlace[1];
-                    $Encode.Deinterlace.Parity = $deinterlace[2];
-                    $Encode.Deinterlace.Deint = $deinterlace[3];
-                    $Encode.Denoise.Enabled = $denoise[0];
-                    $Encode.Denoise.Preset = $denoise[1];
-                    $Encode.Denoise.CustomParams = $denoise[2];
-                    $Encode.FPSMode = $fps_mode;
-                    $Encode.Pulldown = $pulldown; 
-                    $Encode.CustomFilter = $CustomFilter;
-                    $Encode.CustomModifier = $CustomModifier;
-                    Write-Verbose "Encode config: $(ConvertTo-Json $Encode -Depth 2)"
-                    $Encode.Compress();
-                    if ($Encode.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-2: Video Encoding $($videotrack.GUID).hevc failed"; $errorcount++ }
-                    $Encode = $null;
-                } else {
-                    Write-Host "Selected Take Video From Source. Encoding - Skipped" -ForegroundColor Green
-                    Write-Host "Video File: $($videotrack.Custom01)" -ForegroundColor Green
-                }
-            }
-            default { throw "Unknown Recompress Method." }
+            $Encode.Deinterlace.Enabled = $deinterlace[0];
+            $Encode.Deinterlace.Mode = $deinterlace[1];
+            $Encode.Deinterlace.Parity = $deinterlace[2];
+            $Encode.Deinterlace.Deint = $deinterlace[3];
+            $Encode.Denoise.Enabled = $denoise[0];
+            $Encode.Denoise.Preset = $denoise[1];
+            $Encode.Denoise.CustomParams = $denoise[2];
+            $Encode.FPSMode = $fps_mode;
+            $Encode.FramRate = $($videotrack.FrameRate);
+            $Encode.Pulldown = $pulldown; 
+            $Encode.CustomFilter = $CustomFilter;
+            $Encode.CustomModifier = $CustomModifier;
+            Write-Verbose "Encode config: $(ConvertTo-Json $Encode -Depth 2)"
+            $Encode.Compress();
+            if ($Encode.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-2: Video Encoding $($videotrack.GUID).hevc failed"; $errorcount++ }
+            $Encode = $null;
+        } else {
+            Write-Host "Selected Take Video From Source. Encoding - Skipped" -ForegroundColor Green
+            Write-Host "Video File: $($videotrack.Custom01)" -ForegroundColor Green
         }
-        if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.Custom01)")) { Write-Error "Step 3-2: Video Encoding $($videotrack.Custom01) failed"; $errorcount++ }
+        if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.Custom01)")) { Write-Error "Step 3-2: Video Encoding $($videotrack.Custom01) failed"; $errorcount++ } else {
+            $medinfoVid = [MediaInfo]::new($MediaInfoWrapper_path)
+            $medinfoVid.open("$enctemp\$($videotrack.Custom01)")
+            $videotrack.Format = $medinfoVid.Videotracks[0].Format
+            $videotrack.Width = $medinfoVid.Videotracks[0].Width
+            $videotrack.Height = $medinfoVid.Videotracks[0].Height
+            $medinfoVid.Close()
+        }
     }
 
     #  Check for Errors
@@ -587,10 +498,19 @@ $counter = 0
     Foreach ($videotrack in $medinfo.Videotracks) {
         $videotrk = [TVideoTrack]::new()
         $videotrk.FileName = "$enctemp\$($videotrack.Custom01)";
+        $videotrk.Format = $videotrack.Format;
+        $videotrk.Width = $videotrack.Width
+        $videotrk.Height = $videotrack.Height
+
+# Set track language
         if ($video_languages[0]) { $videotrk.Language = $video_languages[[int]$videotrack.StreamKindID + 1] } elseif (-not $videotrack.Language) { $videotrk.Language = "und" } else { $videotrk.Language = $($videotrack.Language) }
-        $videotrk.Title = $videotrack.Title.Replace('"','\"');
+# Set track name
+        if ($take_video_track_name_from_source) { $videotrk.Title = $videotrack.Title } else { $videotrk.Title = $videotrack.Title.Replace('"','\"'); }
+        
         $videotrk.TimeCodeFile = "$enctemp\$($videotrack.GUID).timecode";
         $videotrk.UseTimeCodeFile = $use_timecode_file -and -not $pulldown;
+        $videotrk.fps = $override_fps;
+# Set default track
         Switch ($set_video_default_by[0])
         {
             "source" 	{$videotrk.Default = $videotrack.Default}
@@ -602,11 +522,24 @@ $counter = 0
         $mkvmerge.VideoTracks += $videotrk;
     }
 
-    Foreach ($audiotrack in $medinfo.Audiotracks) {
+    Foreach ($audiotrack in $($medinfo.Audiotracks | where {$_.Custom02})) {
         $audiotrk = [TAudioTrack]::new()
         $audiotrk.FileName = "$enctemp\$($audiotrack.Custom01)";
-        if ($set_audio_languages[0]) { $audiotrk.Language = $set_audio_languages[[int]$audiotrack.StreamKindID + 1] } elseif (-not $audiotrack.Language) { $audiotrk.Language = "und" } else { $audiotrk.Language = $($audiotrack.Language) }
-        if (-not $take_audio_track_name_from_source) { $audiotrk.Title = "$($audiotrack.Format) $($audiotrack.Channels)" } else { $audiotrk.Title = $audiotrack.Title }
+        $audiotrk.Format = $audiotrack.Format;
+
+# Set track language
+        Switch ($set_audio_languages[0])
+        {
+            "source"  {$audiotrk.Language = $($audiotrack.Language)}
+            "all"     {$audiotrk.Language = $set_audio_languages[1][0]}
+            "trackid" {$audiotrk.Language = $set_audio_languages[1][[int]$audiotrack.StreamKindID]}
+            default   {$audiotrk.Language = $($audiotrack.Language)}
+        }
+
+# Set track name
+        if ($take_audio_track_name_from_source) { $audiotrk.Title = $audiotrack.Title } else { $audiotrk.Title = "$($audiotrack.Format) $($audiotrack.Channels)" }
+
+# Set default track
         Switch ($set_audio_default_by[0])
         {
             "source" 	{$audiotrk.Default = $audiotrack.Default}
@@ -615,12 +548,7 @@ $counter = 0
             "trackid" 	{if ($audiotrack.StreamKindID -eq $set_audio_default_by[1]){$audiotrk.Default = $true} else {$audiotrk.Default = $false}}
             default	{$audiotrk.Default = $audiotrack.Default}
         }
-	Switch ($select_audio_by[0])
-	{
-		"language" 	{if ($audiotrk.Language -in $select_audio_by[1]){$mkvmerge.AudioTracks += $audiotrk} else {$audiotrk = $null}}
-		"trackid" 	{if ($audiotrk.StreamKindID -in $select_audio_by[1]){$mkvmerge.AudioTracks += $audiotrk} else {$audiotrk = $null}}
-		default	{$mkvmerge.AudioTracks += $audiotrk}
-	}
+        $mkvmerge.AudioTracks += $audiotrk
     }
 
     if ($($index -ge 0) -and $chapter_file) {
@@ -636,6 +564,7 @@ $counter = 0
         $texttrk.FileName = "$enctemp\$subtitle_file"
         $texttrk.Language = $Sub_languages[0]
         $texttrk.Title = ""
+        $texttrk.Default = $set_sub_default_by[0] -ne "remove"
         $mkvmerge.SubtitleTracks = $texttrk;
     } else {
         if ($Copy_Subtitles -and $medinfo.Texttracks) {
@@ -645,13 +574,14 @@ $counter = 0
                     $texttrk.FileName = "$enctemp\$($texttrack.Custom01)"
                     $texttrk.Language = "$($texttrack.Language)"
                     if ($Copy_Subtitles_Name) {$texttrk.Title = "$($texttrack.Title)"} else {$texttrk.Title = ""}
+                    Write-Verbose "Subtitle default selection by $($set_sub_default_by[0])"
                     Switch ($set_sub_default_by[0])
                     {
-                        "source" 	{$texttrk.Default = $texttrack.Default}
-                        "remove" 	{$texttrk.Default = $false}
-                        "language" 	{if ($texttrack.Language -eq $set_sub_default_by[1]){$texttrk.Default = $true} else {$texttrk.Default = $false}}
-                        "trackid" 	{if ($texttrack.StreamKindID -eq $set_sub_default_by[1]){$texttrk.Default = $true} else {$texttrk.Default = $false}}
-                        default	{$texttrk.Default = $texttrack.Default}
+                        "source" 	{$texttrk.Default = $texttrack.Default; Write-Verbose "Subtitle default get from source and set [$($texttrack.Default)]"}
+                        "remove" 	{$texttrk.Default = $false; Write-Verbose "Subtitle default removed"}
+                        "language" 	{if ($texttrack.Language -eq $set_sub_default_by[1]){$texttrk.Default = $true; Write-Verbose "Subtitle default selection by language and set [true] for language [$($texttrack.Language)]"} else {$texttrk.Default = $false; Write-Verbose "Subtitle default selection by language and set [false] for language [$($texttrack.Language)]"}}
+                        "trackid" 	{if ($texttrack.StreamKindID -eq $set_sub_default_by[1]){$texttrk.Default = $true; Write-Verbose "Subtitle default selection by trackid and set [true] for track [$($texttrack.StreamKindID)]"} else {$texttrk.Default = $false; Write-Verbose "Subtitle default selection by trackid and set [false] for track [$($texttrack.StreamKindID)]"}}
+                        default	{ $texttrk.Default = $texttrack.Default; Write-Verbose "Subtitle default selection unknown and set [$($texttrack.Default)]"}
                     }
                     $mkvmerge.SubtitleTracks += $texttrk;
                 }

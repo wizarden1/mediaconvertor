@@ -1,4 +1,7 @@
 ﻿#requires -version 5
+#Version 1.0.1
+# 1.0.1 - Audio channels to integer
+# 1.0.0 - initial relese
 
 class MediaInfoAudioTrack {
     [string]$ID;
@@ -10,7 +13,7 @@ class MediaInfoAudioTrack {
     [string]$StreamKindID;
     [string]$Language;
     [string]$CodecID;
-    [string]$Channels;
+    [int16]$Channels;
     [string]$SamplingRate;
     [string]$Custom01 = "";
     [string]$Custom02 = "";
@@ -42,6 +45,8 @@ class MediaInfoVideoTrack {
     [string]$Custom03 = "";
     [string]$GUID;
     [bool]$Default = $false;
+    [string]$FrameRate;
+    [string]$FrameRateMode;
 
     MediaInfoVideoTrack () {
         $this.GUID = [guid]::NewGuid().tostring()
@@ -152,7 +157,7 @@ class MediaInfo {
             $audiotrack.StreamKindID = $audtrack.StreamKindID;
             $audiotrack.Language = $audtrack.LanguageString3;
             $audiotrack.CodecID = $audtrack.CodecID;
-            $audiotrack.Channels = $audtrack.ChannelsString;
+            $audiotrack.Channels = $audtrack.Channels;
             $audiotrack.SamplingRate = $audtrack.SamplingRate;
             $audiotrack.Default = $audtrack.Default -eq "Yes";
             $this.Audiotracks += $audiotrack
@@ -237,7 +242,7 @@ class MediaInfo {
             $audiotrack.StreamKindID = $audtrack.StreamKindID;
             $audiotrack.Language = $audtrack.LanguageString3;
             $audiotrack.CodecID = $audtrack.CodecID;
-            $audiotrack.Channels = $audtrack.ChannelsString;
+            $audiotrack.Channels = $audtrack.Channels;
             $audiotrack.SamplingRate = $audtrack.SamplingRate;
             $audiotrack.Default = $audtrack.Default -eq "Yes";
             $this.Audiotracks += $audiotrack
@@ -259,6 +264,8 @@ class MediaInfo {
             $videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
             $videotrack.CodecID = $vidtrack.CodecID;
             $videotrack.Default = $vidtrack.Default -eq "Yes";
+            $videotrack.FrameRate = $vidtrack.FrameRate;
+            $videotrack.FrameRateMode = $vidtrack.FrameRate_Mode;
             $this.Videotracks += $videotrack
         }
 

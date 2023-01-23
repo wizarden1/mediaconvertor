@@ -8,30 +8,33 @@ param (
 )
 #Config
 
-#Audio
-$take_audio_from_source = $false
-#$take_audio_from_source = $true
-$take_audio_track_name_from_source = $false
-$set_audio_default_by = @("source", "jpn")     #set_audio_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
-$set_audio_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
-$select_audio_by = @("language", @("jpn"))     #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
-$RecompressMethod = "Decoder"                  #"AviSynth"|"Decoder"
-$DecodeAutoMode = "Pattern"                    #"Auto"|"Pattern"|"FFMpeg"|"Eac3to"
-$AsyncEncoding = $true
-
 #Video
 $take_video_from_source = $false
-$video_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
+#$take_video_from_source = $true
+$video_languages = @($true, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
+$take_video_track_name_from_source = $false
 $set_video_default_by = @("source", "jpn") #set_video_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
 $use_timecode_file = $true
 $tune = "animation"
 #$tune = "grain"                            #tune(x265):animation,grain,psnr,ssim,fastdecode,zerolatency tune(x264):film,animation,grain,stillimage,fastdecode,zerolatency
-$DecompressSource = "Direct"	           #"FFVideoSource"|"DirectShowSource"|"Direct"
 $Copy_Chapters = $true
 $quantanizer = 24
 $preset = "medium"		           #ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
 #$preset = "ultrafast"
 $codec = "libx265"                         #libx264,libx265
+$override_fps = ""
+
+#Audio
+$take_audio_from_source = $false
+#$take_audio_from_source = $true
+$take_audio_track_name_from_source = $false
+$set_audio_default_by = @("language", "jpn")    #set_audio_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
+$set_audio_languages = @("all", @("jpn"))     #set_audio_languages:<source|all|trackid>, <list of languages|number of tracks> example1: @("all",@("jpn")), example2: @("trackid",@("jpn","jpn","jpn"))
+#$select_audio_by = @("trackid",@(4))         #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
+$select_audio_by = @("all",@("jpn"))     #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
+$DecodeAutoMode = "Pattern"                   #"Auto"|"Pattern"|"FFMpeg"|"Eac3to"
+$AsyncEncoding = $true
+$UpscaleToStereo = $true                      #if source track is mono, it will be upscaled to stereo
 
 #Subtitles
 $Copy_Subtitles = $true
@@ -50,6 +53,7 @@ $resize = @($false, 0, 0, "lanczos", "")   #resize:enabled,width,height,method,"
 $pulldown=$false
 $deinterlace = @($false, "send_frame", "auto", "all") #(send_frame, send_field, send_frame_nospatial, send_field_nospatial), (tff, bff, auto), (all, interlaced)
 $denoise = @($false, "default", "4:3:6:4.5") # denoiser hqdn3d (enable, preset, "custom values") presets = custom, ultralight, light, medium, strong, weak, default
+#$denoise = @($false, "default", "4:3:6:4.5") # denoiser hqdn3d (enable, preset, "custom values") presets = custom, ultralight, light, medium, strong, weak, default
 $CustomFilter = ""
 
 #Modifiers
@@ -59,7 +63,7 @@ $CustomModifier = ""
 
 #Advanced Config
 $del_original = $true
-$use_json = $false                         #Use title of series from json
+$use_json = $true                         #Use title of series from json
 $json_file = ""                            #"title.json" #[{"file": "Overlord - 01 [Beatrice-Raws].mkv","subtitle_file": "Overlord - 01 [Beatrice-Raws].ass","title": "End and Beginning"},{...}]
 #$VerbosePreference = "Continue"            #Enable Verbose mode
 $shutdown = $false

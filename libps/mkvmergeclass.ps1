@@ -12,6 +12,7 @@ class TVideoTrack {
     [string]$Height;
     [string]$TimeCodeFile;
     [bool]$UseTimeCodeFile = $true;
+    [string]$fps = "";
 
     [string] MakeCommand () {
         $this.videotrack_cli = "";
@@ -20,6 +21,7 @@ class TVideoTrack {
             if (Test-Path $this.TimeCodeFile -PathType Leaf) { $this.videotrack_cli += " --timecodes 0:""$($this.TimeCodeFile)""" } else { throw "ERROR: Timecode file $($this.TimeCodeFile) can't be accessed." }
         }
         if ($this.Language) { $this.videotrack_cli += " --language 0:""$($this.Language)""" };
+        if ($this.fps) { $this.videotrack_cli += " --default-duration 0:""$($this.fps)""" };
         #		$this.videotrack_cli += " --video-tracks 0";
         #		$this.videotrack_cli += " --compression 0:none";
         #		$this.videotrack_cli += " --no-audio --no-global-tags --no-chapters";
