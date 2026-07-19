@@ -1,5 +1,6 @@
 ﻿#Requires -Version 5
-#Version 1.0.3
+#Version 1.0.4
+# 1.0.4 - Fix: add exit code checks for ffmpeg, fix path quoting, replace Get-ChildItem with Test-Path, add .raw to ValidateSet
 # 1.0.3 - Fix: filters array no longer starts with empty string (removed leading space in CLI)
 # 1.0.2 - Fix: $filters += $filters + x doubled array on every filter append
 # 1.0.1 - Add upscale to stereo if source is mono
@@ -68,7 +69,7 @@ class EAC3 {
 
     [io.fileinfo]$SourceFileName;
 
-    [ValidateSet('.wav', '.ac3', '.dts', '.m4a', '.flac')]
+    [ValidateSet('.raw', '.wav', '.ac3', '.dts', '.m4a', '.flac')]
     hidden [String]$DestinationFileExtension = ".m4a";
     [io.fileinfo]$DestinationFileName;
 
@@ -135,44 +136,57 @@ class EAC3 {
 
         # Decoding
         $tempfile = ""
+        $srcPath = $this.SourceFileName.FullName
         if ($this.UpscaleToStereo) { $upscaleFilter = "-ac 2" } else { $upscaleFilter = "" }
         switch ($this.DecodeAutoMode) {
             Auto {
                 if ($this.inFormats -contains $this.SourceFileName.Extension -and -not $this.UpscaleToStereo) {
-                    $tempfile = """$($this.SourceFileName.FullName)"""
+                    $tempfile = """$srcPath"""
                 } else {
-                    $tempfile = """$($this.SourceFileName.FullName).flac"""
-                    Write-Verbose "Executing: $($this.ffmpeg_path) -y -i ""$($this.SourceFileName.FullName)"" $upscaleFilter $tempfile"
+                    $tempfile = """$srcPath.flac"""
+                    $ffArgs = "-y -i ""$srcPath"""
+                    if ($upscaleFilter) { $ffArgs += " $upscaleFilter" }
+                    $ffArgs += " ""$srcPath.flac"""
+                    Write-Verbose "Executing: $($this.ffmpeg_path) $ffArgs"
                     if (-not $this.DryMode) {
-                        Start-Process -FilePath $this.ffmpeg_path -ArgumentList @("-y -i", $($this.SourceFileName.FullName), $upscaleFilter, $tempfile) -NoNewWindow -Wait 
-                        if ($(Get-ChildItem $($this.SourceFileName.FullName).flac).Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been compressed." }
+                        $proc = Start-Process -FilePath $this.ffmpeg_path -ArgumentList $ffArgs -NoNewWindow -Wait -PassThru
+                        if ($proc.ExitCode -ne 0) { throw "ffmpeg decode failed with exit code $($proc.ExitCode) for $($this.SourceFileName.Name)" }
+                        if (-not (Test-Path -LiteralPath "$srcPath.flac") -or (Get-Item -LiteralPath "$srcPath.flac").Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been decoded." }
                     }
                 }
             }
             Pattern {
                 if ($this.inFormats -contains $this.SourceFileName.Extension -and -not $this.UpscaleToStereo) {
-                    $tempfile = """$($this.SourceFileName.FullName)"""
+                    $tempfile = """$srcPath"""
                 } elseif ($this.inFormatsPattern -contains $this.SourceFileName.Extension -or ($this.inFormats -contains $this.SourceFileName.Extension -and $this.UpscaleToStereo)) {
-                    $tempfile = """$($this.SourceFileName.FullName).flac"""
-                    Write-Verbose "Executing: $($this.ffmpeg_path) -y -i ""$($this.SourceFileName.FullName)"" $upscaleFilter $tempfile"
+                    $tempfile = """$srcPath.flac"""
+                    $ffArgs = "-y -i ""$srcPath"""
+                    if ($upscaleFilter) { $ffArgs += " $upscaleFilter" }
+                    $ffArgs += " ""$srcPath.flac"""
+                    Write-Verbose "Executing: $($this.ffmpeg_path) $ffArgs"
                     if (-not $this.DryMode) {
-                        Start-Process -FilePath $this.ffmpeg_path -ArgumentList @("-y -i", $($this.SourceFileName.FullName), $upscaleFilter, $tempfile) -NoNewWindow -Wait 
-                        if ($(Get-ChildItem $($this.SourceFileName.FullName).flac).Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been compressed." }
+                        $proc = Start-Process -FilePath $this.ffmpeg_path -ArgumentList $ffArgs -NoNewWindow -Wait -PassThru
+                        if ($proc.ExitCode -ne 0) { throw "ffmpeg decode failed with exit code $($proc.ExitCode) for $($this.SourceFileName.Name)" }
+                        if (-not (Test-Path -LiteralPath "$srcPath.flac") -or (Get-Item -LiteralPath "$srcPath.flac").Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been decoded." }
                     }
                 } else { throw "Unsupported File format. Use FFMpeg for Decode." }
             }
             FFMpeg {
-                $tempfile = """$($this.SourceFileName.FullName).flac"""
-                Write-Verbose "Executing: $($this.ffmpeg_path) -y -i ""$($this.SourceFileName.FullName)"" $upscaleFilter $tempfile"
+                $tempfile = """$srcPath.flac"""
+                $ffArgs = "-y -i ""$srcPath"""
+                if ($upscaleFilter) { $ffArgs += " $upscaleFilter" }
+                $ffArgs += " ""$srcPath.flac"""
+                Write-Verbose "Executing: $($this.ffmpeg_path) $ffArgs"
                 if (-not $this.DryMode) {
-                    Start-Process -FilePath $this.ffmpeg_path -ArgumentList @("-y -i", $($this.SourceFileName.FullName), $tempfile) -NoNewWindow -Wait 
-                    if ($(Get-ChildItem $($this.SourceFileName.FullName).flac).Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been compressed." }
+                    $proc = Start-Process -FilePath $this.ffmpeg_path -ArgumentList $ffArgs -NoNewWindow -Wait -PassThru
+                    if ($proc.ExitCode -ne 0) { throw "ffmpeg decode failed with exit code $($proc.ExitCode) for $($this.SourceFileName.Name)" }
+                    if (-not (Test-Path -LiteralPath "$srcPath.flac") -or (Get-Item -LiteralPath "$srcPath.flac").Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been decoded." }
                 }
             }
             Eac3to { 
                 if ($this.inFormats -notcontains $this.SourceFileName.Extension) { throw "Unsupported File format. Use FFMpeg for Decode." }
                 if ($this.UpscaleToStereo) { throw "Eac3to can't be used for mono->stereo conversation. Use Auto/Pattern/FFMpeg for Decode." }
-                $tempfile = """$($this.SourceFileName.FullName)"""
+                $tempfile = """$srcPath"""
             }
         }
 
@@ -186,7 +200,7 @@ class EAC3 {
                 Write-Verbose "Executing: $($this.eac3to_path) $tempfile ""$DestinationFile"" -lowPriority $filterLine"
                 $proc = Start-Process -FilePath $this.eac3to_path -ArgumentList @($tempfile, """$DestinationFile""", "-lowPriority $filterLine") -NoNewWindow -PassThru -Wait
                 $this.EncProcess = $proc
-                if ($(Get-ChildItem $DestinationFile).Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been compressed." }
+                if (-not (Test-Path -LiteralPath $DestinationFile) -or (Get-Item -LiteralPath $DestinationFile).Length -eq 0) { throw "File $($this.SourceFileName.Name) hasn't been compressed." }
             }
         }
     }
