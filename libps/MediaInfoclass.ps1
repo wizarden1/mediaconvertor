@@ -1,5 +1,6 @@
 ﻿#requires -version 5
-#Version 1.0.1
+#Version 1.1.0
+# 1.1.0 - Deduplicate Open(): parameterless overload delegates to Open(string), fixes missing FrameRate
 # 1.0.1 - Audio channels to integer
 # 1.0.0 - initial relese
 
@@ -116,90 +117,7 @@ class MediaInfo {
 
     # Methods
     [void] Open () {
-        $this.Close()
-
-        if ($this.medinfo) { $this.medinfo = $null }
-        if (Test-Path $this.MediaFile -PathType Leaf) { } else { throw "ERROR: Media file doesn't exists." }
-
-        $this.medinfo = new-object MediaInfoWrapper.MediaInfo($this.MediaFile)
-        ## General
-        $this.FullName = $this.medinfo.General[0].CompleteName;
-        $this.DirectoryName = $this.medinfo.General[0].FolderName;
-        $this.BaseName = $this.medinfo.General[0].FileName;
-        $this.Extension = $this.medinfo.General[0].FileExtension.ToUpper();
-        $this.Duration = $this.medinfo.General[0].Duration;
-        $this.StreamSize = $this.medinfo.General[0].StreamSize;
-        $this.Title = $this.medinfo.General[0].Title;
-        $this.Album = $this.medinfo.General[0].Album;
-        $this.Track = $this.medinfo.General[0].Track;
-        $this.Genre = $this.medinfo.General[0].Genre;
-        $this.ContentType = $this.medinfo.General[0].ContentType;
-        $this.Composer = $this.medinfo.General[0].Composer;
-        $this.AlbumPerformer = $this.medinfo.General[0].AlbumPerformer;
-        $this.Performer = $this.medinfo.General[0].Performer;
-        $this.Format = $this.medinfo.General[0].Format;
-        $this.Codec = $this.medinfo.General[0].Codec;
-        $this.TrackPosition = $this.medinfo.General[0].TrackPosition;
-        $this.TrackPosition_Total = $this.medinfo.General[0].TrackPosition_Total;
-        $this.Chapter = $this.medinfo.General[0].Chapter;
-        $this.Publisher = $this.medinfo.General[0].Publisher;
-        $this.Recorded_Date = $this.medinfo.General[0].Recorded_Date;
-        $this.Copyright = $this.medinfo.General[0].Copyright;
-
-        ## Audio
-        Foreach ($audtrack in $this.medinfo.Audio) {
-            $audiotrack = [MediaInfoAudioTrack]::new()
-            $audiotrack.ID = $audtrack.ID;
-            $audiotrack.StreamOrder = $audtrack.StreamOrder;
-            $audiotrack.UniqueID = $audtrack.UniqueID;
-            $audiotrack.Format = $audtrack.Format;
-            $audiotrack.Title = $audtrack.Title;
-            $audiotrack.StreamKindID = $audtrack.StreamKindID;
-            $audiotrack.Language = $audtrack.LanguageString3;
-            $audiotrack.CodecID = $audtrack.CodecID;
-            $audiotrack.Channels = $audtrack.Channels;
-            $audiotrack.SamplingRate = $audtrack.SamplingRate;
-            $audiotrack.Default = $audtrack.Default -eq "Yes";
-            $this.Audiotracks += $audiotrack
-        }
-
-        ## Video
-        Foreach ($vidtrack in $this.medinfo.Video) {
-            $videotrack = [MediaInfoVideoTrack]::new()
-            $videotrack.ID = $vidtrack.ID;
-            $videotrack.StreamOrder = $vidtrack.StreamOrder;
-            $videotrack.UniqueID = $vidtrack.UniqueID;
-            $videotrack.Title = $vidtrack.Title;
-            $videotrack.Format = $vidtrack.Format;
-            $videotrack.Language = $vidtrack.LanguageString3;
-            $videotrack.StreamKindID = $vidtrack.StreamKindID;
-            $videotrack.Width = $vidtrack.Width;
-            $videotrack.Height = $vidtrack.Height;
-            $videotrack.BitDepth = $vidtrack.BitDepth;
-            $videotrack.DisplayAspectRatio = $vidtrack.DisplayAspectRatio;
-            $videotrack.CodecID = $vidtrack.CodecID;
-            $videotrack.Default = $vidtrack.Default -eq "Yes";
-            $this.Videotracks += $videotrack
-        }
-
-        ## Text
-        Foreach ($txttrack in $this.medinfo.Text) {
-            $texttrack = [MediaInfoTextTrack]::new()
-            $texttrack.ID = $txttrack.ID;
-            $texttrack.StreamOrder = $txttrack.StreamOrder;
-            $texttrack.UniqueID = $txttrack.UniqueID;
-            $texttrack.Title = $txttrack.Title;
-            $texttrack.Format = $txttrack.Format;
-            $texttrack.Language = $txttrack.LanguageString3;
-            $texttrack.StreamKindID = $txttrack.StreamKindID;
-            $texttrack.CodecID = $txttrack.CodecID;
-            $texttrack.Default = $txttrack.Default -eq "Yes";
-            $this.Texttracks += $texttrack
-        }
-
-        ## Chapters
-        $this.Chapters = ($this.medinfo.MenuCount -gt 0)
-
+        $this.Open($this.MediaFile)
     }
 
     [void] Open ([string]$MediaFile) {
