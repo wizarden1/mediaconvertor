@@ -1,5 +1,6 @@
 ﻿#Requires -Version 5
-#Version 1.0.1
+#Version 1.0.2
+# 1.0.2 - Fix: $filters += $filters + x doubled array on every filter append
 # 1.0.1 - Add upscale to stereo if source is mono
 # 1.0.0 - initial relese
 
@@ -110,22 +111,22 @@ class EAC3 {
         $filters = @("")
         if ($this.Resample -ne [Resample]::none) {
             switch ($this.Resample) {
-                to44100Hz { $filters += $filters + '-resampleTo44100'; }
-                to48000Hz { $filters += $filters + '-resampleTo48000'; }
-                to96000Hz { $filters += $filters + '-resampleTo96000'; }
+                to44100Hz { $filters += '-resampleTo44100'; }
+                to48000Hz { $filters += '-resampleTo48000'; }
+                to96000Hz { $filters += '-resampleTo96000'; }
             }
         }
         if ($this.Downmix -ne [Downmix]::none) {
             switch ($this.Downmix) {
-                to6 { $filters += $filters + '-down6'; }
-                toDpl { $filters += $filters + '-downDpl'; }
-                toStereo { $filters += $filters + '-downStereo'; }
+                to6 { $filters += '-down6'; }
+                toDpl { $filters += '-downDpl'; }
+                toStereo { $filters += '-downStereo'; }
             }
         }
-        if ($this.Delay -ne 0) {if ($this.Delay -gt 0) { $filters += $filters + "+$($this.Delay)ms"; } else { $filters += $filters + "$($this.Delay)ms"; }}
-        if ($this.Gain -ne 0) {if ($this.Gain -gt 0) { $filters += $filters + "+$($this.Gain)dB"; } else { $filters += $filters + "$($this.Gain)dB"; }}
-        if ($this.Remap) { $filters += $filters + "-$($this.Remap)" }
-        if ($this.Quality -ne 0.5) { $filters += $filters + "-quality=$($this.Quality)" }
+        if ($this.Delay -ne 0) {if ($this.Delay -gt 0) { $filters += "+$($this.Delay)ms"; } else { $filters += "$($this.Delay)ms"; }}
+        if ($this.Gain -ne 0) {if ($this.Gain -gt 0) { $filters += "+$($this.Gain)dB"; } else { $filters += "$($this.Gain)dB"; }}
+        if ($this.Remap) { $filters += "-$($this.Remap)" }
+        if ($this.Quality -ne 0.5) { $filters += "-quality=$($this.Quality)" }
 
         $filterLine = ""
         if ($filters.Length -gt 0) { $filterLine = [string]::Join(" ", $filters) }

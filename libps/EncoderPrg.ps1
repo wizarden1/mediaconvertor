@@ -1,5 +1,10 @@
 #Requires -Version 5
-#Version 4.15.2
+#Version 4.16.0
+# 4.16.0 - Add elapsed time per file/total, total compression ratio, mkvmerge/mkvextract exit code checks, dot-sourcing instead of Invoke-Expression
+# 4.15.6 - Fix: Finally block now only kills processes that are still running
+# 4.15.5 - Remove unused tool definitions and prerequisite checks (neroAacEnc, oggdec, faad, wavi, avs2yuv)
+# 4.15.4 - Fix: Verbose messages said Subtitles instead of Chapters in two places
+# 4.15.3 - Fix: switch extension comparison, reset stale variables per iteration, $errorscount typo
 # 4.15.2 - Add upscale to stereo if source is mono
 # 4.15.1 - Add $take_video_track_name_from_source
 # 4.15.0 - Remove AviSync, Rebuild Set Audio Languge
@@ -37,7 +42,7 @@
 # 4.2 - Add Parameter Verbose Mode
 # 4.1 - Add copy subtitles
 # 4.0 - Add ffmpeg
- 
+
 $libs = @("MediaInfoclass", "mkvmergeclass", "FFMPEGclass", "EAC3class")
 
 $extension = "MKV"
@@ -63,22 +68,15 @@ if (-not $(Test-Path -LiteralPath $out)) { New-Item -Path $root_path -Name "out"
 if (-not $(Test-Path -LiteralPath $enctemp)) { New-Item -Path $root_path -Name "temp" -ItemType "directory" }
 
 #Tools
-$neroAacEnc_path = Join-Path $tools_path "neroAacEnc.exe"
 $MediaInfoWrapper_path = Join-Path $toolsx64_path "MediaInfoWrapper.dll"
 $mkvmerge_path = Join-Path $toolsx64_path "mkvtoolnix\mkvmerge.exe"
 $mkvextract_path = Join-Path $toolsx64_path "mkvtoolnix\mkvextract.exe"
-$oggdec_path = Join-Path $tools_path "oggdec.exe"
 $eac3to = Join-Path $tools_path "eac3to\eac3to.exe"
-$faad_path = Join-Path $tools_path "faad.exe"
-$wavi = Join-Path $tools_path "Wavi.exe"
-$avs2yuv_path = Join-Path $toolsx64_path "avs2yuv\avs2yuv64.exe"
 $ffmpeg_path = Join-Path $toolsx64_path "ffmpeg.exe"
 $title_json = Join-Path $in $json_file
 
 #Check Prerequisite
 Write-Host "Checking Prerequisite..." -ForegroundColor Green
-Write-Verbose "Checking $neroAacEnc_path"
-if (-not $(Test-Path -LiteralPath $neroAacEnc_path)) { Write-Error "$neroAacEnc_path not found"; break }
 Write-Verbose "Checking $MediaInfoWrapper_path"
 if (-not $(Test-Path -LiteralPath $MediaInfoWrapper_path)) { Write-Error "$MediaInfoWrapper_path not found"; break }
 Write-Verbose "Checking $ffmpeg_path"
@@ -87,16 +85,8 @@ Write-Verbose "Checking $mkvmerge_path"
 if (-not $(Test-Path -LiteralPath $mkvmerge_path)) { Write-Error "$mkvmerge_path not found"; break }
 Write-Verbose "Checking $mkvextract_path"
 if (-not $(Test-Path -LiteralPath $mkvextract_path)) { Write-Error "$mkvextract_path not found"; break }
-Write-Verbose "Checking $oggdec_path"
-if (-not $(Test-Path -LiteralPath $oggdec_path)) { Write-Error "$oggdec_path not found"; break }
 Write-Verbose "Checking $eac3to"
 if (-not $(Test-Path -LiteralPath $eac3to)) { Write-Error "$eac3to not found"; break }
-Write-Verbose "Checking $faad_path"
-if (-not $(Test-Path -LiteralPath $faad_path)) { Write-Error "$faad_path not found"; break }
-Write-Verbose "Checking $wavi"
-if (-not $(Test-Path -LiteralPath $wavi)) { Write-Error "$wavi not found"; break }
-Write-Verbose "Checking $avs2yuv_path"
-if (-not $(Test-Path -LiteralPath $avs2yuv_path)) { Write-Error "$avs2yuv_path not found"; break }
 
 #Check title json
 if ($use_json){
@@ -144,7 +134,7 @@ if ($use_json){
                 }               
             }
             if ($json[$index].chapter_file) {
-                Write-Verbose "Subtitles for $($file.name) will be used from $($json[$index].chapter_file)"
+                Write-Verbose "Chapters for $($file.name) will be used from $($json[$index].chapter_file)"
                 if (Test-Path -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file)) {
                     $chapter_file = Get-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file)
                     if ($chapter_file.IsReadOnly) {
@@ -173,7 +163,7 @@ foreach ($lib in $libs) {
     $lib_path = $(Join-Path $libs_path "$lib.ps1")
     if (-not $(Test-Path -LiteralPath $lib_path)) { Write-Error "$lib not found"; break }
     Write-Verbose "Loading $lib.ps1"
-    Invoke-Expression $(Get-Content -Raw $lib_path)
+    . $lib_path
 }
 
 ####################################################################################
@@ -194,9 +184,18 @@ $files | ForEach-Object {
 $totalErrorsCount = 0
 $FilesWithErrors = @()
 $counter = 0
+$totalStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+$totalSourceSize = [long]0
+$totalOutputSize = [long]0
 :Main Foreach ($file in $files) {
     $counter++
+    $fileStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $totalSourceSize += $file.Length
     $errorcount = 0
+    $index = -1
+    $subtitle_file = $null
+    $chapter_file = $null
+    $cropf = $null
     if ($use_json) {
         $index = [Array]::IndexOf($json.file, $file.name)
         Write-Verbose "JSON Configuration: $($json[$index])"
@@ -220,11 +219,13 @@ $counter = 0
     Write-Verbose "File Source: $($file.fullname)"
     Write-Verbose "File Destination: $enctemp\temp$extension.$extension"
     switch ($file.Extension) {
-        $extension {
+        ".$extension" {
             $file | Copy-Item -destination "$enctemp\temp$extension.$extension"
         }
         default  {
-            Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\temp$extension.$extension"" ""$($file.FullName)"""
+            $proc = Start-Process -Wait -NoNewWindow -PassThru -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\temp$extension.$extension"" ""$($file.FullName)"""
+            if ($proc.ExitCode -eq 1) { Write-Warning "Step 1-1: mkvmerge remux warning (exit code 1)" }
+            if ($proc.ExitCode -gt 1) { Write-Error "Step 1-1: mkvmerge remux failed (exit code $($proc.ExitCode))"; $errorcount++ }
         }
     }
     if ($(Test-Path -LiteralPath "$enctemp\temp$extension.$extension")) { Write-Host "File copied succesfully" } else { Write-Error "File copy failed"; $errorcount++ }
@@ -275,7 +276,9 @@ $counter = 0
 #        Write-Verbose "mkvextract Command Line: $mkvmerge_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
 #        Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.ID-1) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
         Write-Verbose "mkvextract Command Line: $mkvmerge_path -o ""$enctemp\$($videotrack.GUID).$($videotrack.Format)"" --video-tracks $($videotrack.StreamOrder) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
-        Start-Process -Wait -NoNewWindow -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.StreamOrder) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+        $proc = Start-Process -Wait -NoNewWindow -PassThru -FilePath $mkvmerge_path -ArgumentList "-o ""$enctemp\$($videotrack.GUID).$($videotrack.Format).src"" --video-tracks $($videotrack.StreamOrder) --no-audio --no-global-tags --no-subtitles --no-track-tags --no-chapters --no-cues ""$enctemp\temp$extension.$extension"""
+        if ($proc.ExitCode -eq 1) { Write-Warning "Step 2-1: mkvmerge extract video warning (exit code 1)" }
+        if ($proc.ExitCode -gt 1) { Write-Error "Step 2-1: mkvmerge extract video failed (exit code $($proc.ExitCode))"; $errorcount++ }
         if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.GUID).$($videotrack.Format).src")) { Write-Error "Step 2-1: Extracting Videotrack file $($videotrack.GUID).$($videotrack.Format).src failed"; $errorcount++ }
     }
 
@@ -294,7 +297,9 @@ $counter = 0
 #        Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
 #        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.ID-1):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
         Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.StreamOrder):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
-        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.StreamOrder):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+        $proc = Start-Process -Wait -NoNewWindow -PassThru -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($audiotrack.StreamOrder):""$enctemp\$($audiotrack.GUID).$($audiotrack.Format)"""
+        if ($proc.ExitCode -eq 1) { Write-Warning "Step 2-2: mkvextract audio warning (exit code 1)" }
+        if ($proc.ExitCode -gt 1) { Write-Error "Step 2-2: mkvextract audio failed (exit code $($proc.ExitCode))"; $errorcount++ }
         if (-not $(Test-Path -LiteralPath "$enctemp\$($audiotrack.GUID).$($audiotrack.Format)")) { Write-Error "Step 2-2: Extracting Audiotrack file $($audiotrack.GUID).$($audiotrack.Format) failed"; $errorcount++ }
     }
 
@@ -307,7 +312,9 @@ $counter = 0
 #        Write-Verbose "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
 #        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.ID-1):""$enctemp\$($videotrack.GUID).timecode"""
         Write-Verbose "mkvextract Command Line: $mkvextract_path timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.StreamOrder):""$enctemp\$($videotrack.GUID).timecode"""
-        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.StreamOrder):""$enctemp\$($videotrack.GUID).timecode"""
+        $proc = Start-Process -Wait -NoNewWindow -PassThru -FilePath $mkvextract_path -ArgumentList "timecodes_v2 ""$enctemp\temp$extension.$extension"" $($videotrack.StreamOrder):""$enctemp\$($videotrack.GUID).timecode"""
+        if ($proc.ExitCode -eq 1) { Write-Warning "Step 2-3: mkvextract timecodes warning (exit code 1)" }
+        if ($proc.ExitCode -gt 1) { Write-Error "Step 2-3: mkvextract timecodes failed (exit code $($proc.ExitCode))"; $errorcount++ }
         if (-not $(Test-Path -LiteralPath "$enctemp\$($videotrack.GUID).timecode")) { Write-Error "Step 2-3: Extracting timecode file $($videotrack.GUID).timecode failed"; $errorcount++ }
     # Replace Title
         if ($use_json) {
@@ -326,7 +333,9 @@ $counter = 0
 #        Write-Progress -Id 1 -ParentId 0 "Step 2-4: Extracting chapters..."
         Write-Host "Step 2-4: Extracting chapters..." -ForegroundColor Green
         Write-Verbose "mkvextract Command Line: $mkvextract_path chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
-        Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
+        $proc = Start-Process -Wait -NoNewWindow -PassThru -FilePath $mkvextract_path -ArgumentList "chapters ""$enctemp\temp$extension.$extension"" -r ""$enctemp\chapters.xml"""
+        if ($proc.ExitCode -eq 1) { Write-Warning "Step 2-4: mkvextract chapters warning (exit code 1)" }
+        if ($proc.ExitCode -gt 1) { Write-Error "Step 2-4: mkvextract chapters failed (exit code $($proc.ExitCode))"; $errorcount++ }
         if (-not $(Test-Path -LiteralPath "$enctemp\chapters.xml")) { Write-Error "Step 2-4: Extracting chapter file chapters.xml failed"; $errorcount++ }
     } else {
 #        Write-Progress -Id 1 -ParentId 0 "Step 2-4: Extracting chapters..."
@@ -343,7 +352,9 @@ $counter = 0
 #            Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($texttrack.ID-1):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
 #            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($texttrack.ID-1):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
             Write-Verbose "mkvextract Command Line: $mkvextract_path tracks ""$enctemp\temp$extension.$extension"" $($texttrack.StreamOrder):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
-            Start-Process -Wait -NoNewWindow -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($texttrack.StreamOrder):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
+            $proc = Start-Process -Wait -NoNewWindow -PassThru -FilePath $mkvextract_path -ArgumentList "tracks ""$enctemp\temp$extension.$extension"" $($texttrack.StreamOrder):""$enctemp\$($texttrack.GUID).$($texttrack.Format)"""
+            if ($proc.ExitCode -eq 1) { Write-Warning "Step 2-5: mkvextract subtitles warning (exit code 1)" }
+            if ($proc.ExitCode -gt 1) { Write-Error "Step 2-5: mkvextract subtitles failed (exit code $($proc.ExitCode))"; $errorcount++ }
             switch ($texttrack.Format) {
                 "VobSub" {
                     if (-not $($(Test-Path -LiteralPath "$enctemp\$($texttrack.GUID).sub") -and $(Test-Path -LiteralPath "$enctemp\$($texttrack.GUID).idx"))) { Write-Error "Step 2-5: Extracting subtitle file $($texttrack.GUID).$($texttrack.Format) failed"; $errorcount++ } 
@@ -400,7 +411,7 @@ $counter = 0
             Wait-Process -InputObject $audio_enc_processes.EncProcess
         }
         Finally {
-            Get-Process -InputObject  $audio_enc_processes.EncProcess | Stop-Process
+            $audio_enc_processes.EncProcess | Where-Object { -not $_.HasExited } | Stop-Process -Force
         }
         $audio_enc_processes | ForEach-Object {
             Write-Verbose "Process Id: $($_.EncProcess.id) exit code $($_.EncProcess.ExitCode)"
@@ -485,7 +496,7 @@ $counter = 0
     }
 
     #  Check for Errors
-    if ($errorscount -gt 0) { $totalErrorsCount += $errorcount; $FilesWithErrors += $file.name; continue Main }
+    if ($errorcount -gt 0) { $totalErrorsCount += $errorcount; $FilesWithErrors += $file.name; continue Main }
 
 # Combine MKV
     Write-Host "Step 4: Merge Files" -ForegroundColor Green
@@ -610,11 +621,15 @@ $counter = 0
                 Remove-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].subtitle_file)
             }
             if ($json[$index].chapter_file -and $(Test-Path -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file))) {
-                Write-Verbose "Remove subtitle file $($json[$index].chapter_file)"
+                Write-Verbose "Remove chapter file $($json[$index].chapter_file)"
                 Remove-Item -LiteralPath $(Join-Path -Path $file.DirectoryName -ChildPath $json[$index].chapter_file)
             }
         }
     }
+    $fileStopwatch.Stop()
+    $outputFile = Get-Item -LiteralPath "$out\$($file.basename).mkv" -ErrorAction SilentlyContinue
+    if ($outputFile) { $totalOutputSize += $outputFile.Length }
+    Write-Host "File completed in $($fileStopwatch.Elapsed.ToString('hh\:mm\:ss'))" -ForegroundColor Cyan
     $totalErrorsCount += $errorcount
     if ($errorcount) { $FilesWithErrors += $file.name }
     if ($Debug) { break }
@@ -636,4 +651,10 @@ if ($totalErrorsCount) {
     Write-Host "Errors Count: $totalErrorsCount" -ForegroundColor Green
 }
 Write-Host "Process completed" -ForegroundColor Green
+$totalStopwatch.Stop()
+Write-Host "Total time: $($totalStopwatch.Elapsed.ToString('hh\:mm\:ss'))" -ForegroundColor Cyan
+if ($totalSourceSize -gt 0 -and $totalOutputSize -gt 0) {
+    $ratio = [math]::Round($totalSourceSize / $totalOutputSize, 2)
+    Write-Host ("Total size: {0:N0} MB -> {1:N0} MB (ratio {2}:1)" -f ($totalSourceSize/1MB), ($totalOutputSize/1MB), $ratio) -ForegroundColor Cyan
+}
 if ($shutdown) { shutdown -t 60 -f -s }

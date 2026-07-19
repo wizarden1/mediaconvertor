@@ -1,5 +1,6 @@
 #Requires -Version 5
-#Version 1.0
+#Version 1.1
+# 1.1 - Replace Invoke-Expression with dot-sourcing for correct error line numbers
 # 1.0 - Separate config from main program
 
 param (
@@ -52,8 +53,8 @@ $resize = @($false, 0, 0, "lanczos", "")   #resize:enabled,width,height,method,"
 #$resize=@($true,1280,544,"lanczos","")    #resize:enabled,width,height,method,", additional parametrs"
 $pulldown=$false
 $deinterlace = @($false, "send_frame", "auto", "all") #(send_frame, send_field, send_frame_nospatial, send_field_nospatial), (tff, bff, auto), (all, interlaced)
+#$denoise = @($true, "default", "4:3:6:4.5") # denoiser hqdn3d (enable, preset, "custom values") presets = custom, ultralight, light, medium, strong, weak, default
 $denoise = @($false, "default", "4:3:6:4.5") # denoiser hqdn3d (enable, preset, "custom values") presets = custom, ultralight, light, medium, strong, weak, default
-#$denoise = @($false, "default", "4:3:6:4.5") # denoiser hqdn3d (enable, preset, "custom values") presets = custom, ultralight, light, medium, strong, weak, default
 $CustomFilter = ""
 
 #Modifiers
@@ -74,4 +75,4 @@ $mainprg = "EncoderPrg"
 $mainprg_path = Join-Path $(Get-Location).Path "libps\$mainprg.ps1"
 if (-not $(Test-Path -LiteralPath $mainprg_path)) { Write-Error "$mainprg not found"; break }
 Write-Verbose "Loading $mainprg.ps1"
-Invoke-Expression $(Get-Content -Raw $mainprg_path)
+. $mainprg_path

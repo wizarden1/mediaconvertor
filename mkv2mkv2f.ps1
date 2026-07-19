@@ -1,5 +1,6 @@
 #Requires -Version 5
-#Version 1.0
+#Version 1.1
+# 1.1 - Replace Invoke-Expression with dot-sourcing for correct error line numbers
 # 1.0 - Separate config from main program
 
 param (
@@ -10,10 +11,12 @@ param (
 
 #Video
 $take_video_from_source = $false
+#$take_video_from_source = $true
 $video_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
 $take_video_track_name_from_source = $false
 $set_video_default_by = @("source", "rus") #set_video_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
 $use_timecode_file = $true
+#$tune = "animation"
 $tune = "grain"                            #tune(x265):animation,grain,psnr,ssim,fastdecode,zerolatency tune(x264):film,animation,grain,stillimage,fastdecode,zerolatency
 $Copy_Chapters = $true
 $quantanizer = 24
@@ -23,9 +26,10 @@ $codec = "libx265"                         #libx264,libx265
 $override_fps = ""
 
 #Audio
-#$take_audio_from_source = $false
-$take_audio_from_source = $true
-$take_audio_track_name_from_source = $true
+$take_audio_from_source = $false
+#$take_audio_from_source = $true
+#$take_audio_track_name_from_source = $true
+$take_audio_track_name_from_source = $false
 $set_audio_default_by = @("source", "rus")     #set_audio_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
 $set_audio_languages = @("source", @("jpn"))     #set_audio_languages:<source|all|trackid>, <list of languages|number of tracks> example1: @("all",@("jpn")), example2: @("trackid",@("jpn","jpn","jpn"))
 $select_audio_by = @("all", @("rus"))          #select_audio_by:<language|trackid|all>,<list of languages|number of tracks> example1: @("all",@("jpn"))
@@ -36,6 +40,7 @@ $UpscaleToStereo = $false                      #if source track is mono, it will
 #Subtitles
 $Copy_Subtitles = $true
 $Copy_Subtitles_Name = $true
+#$Copy_Subtitles_Name = $false
 $set_sub_default_by = @("source", "rus")   #set_sub_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
 $Sub_languages = @("rus")                  #@("lng1","lng2","lng3",...)
 
@@ -69,4 +74,4 @@ $mainprg = "EncoderPrg"
 $mainprg_path = Join-Path $(Get-Location).Path "libps\$mainprg.ps1"
 if (-not $(Test-Path -LiteralPath $mainprg_path)) { Write-Error "$mainprg not found"; break }
 Write-Verbose "Loading $mainprg.ps1"
-Invoke-Expression $(Get-Content -Raw $mainprg_path)
+. $mainprg_path

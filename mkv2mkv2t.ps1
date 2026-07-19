@@ -1,5 +1,6 @@
 #Requires -Version 5
-#Version 1.0
+#Version 1.1
+# 1.1 - Replace Invoke-Expression with dot-sourcing for correct error line numbers
 # 1.0 - Separate config from main program
 
 param (
@@ -11,7 +12,7 @@ param (
 #Video
 $take_video_from_source = $false
 #$take_video_from_source = $true
-$video_languages = @($flase, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
+$video_languages = @($false, "jpn", "jpn") #@("Use manual set","track ID/default","track ID",...)
 $take_video_track_name_from_source = $false
 $set_video_default_by = @("source", "jpn") #set_video_default_by:<source|remove|language|trackid>,<language|number of track> example1: @("language","rus")
 $use_timecode_file = $true
@@ -72,4 +73,4 @@ $mainprg = "EncoderPrg"
 $mainprg_path = Join-Path $(Get-Location).Path "libps\$mainprg.ps1"
 if (-not $(Test-Path -LiteralPath $mainprg_path)) { Write-Error "$mainprg not found"; break }
 Write-Verbose "Loading $mainprg.ps1"
-Invoke-Expression $(Get-Content -Raw $mainprg_path)
+. $mainprg_path
