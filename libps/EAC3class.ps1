@@ -1,5 +1,6 @@
 ﻿#Requires -Version 5
-#Version 1.0.2
+#Version 1.0.3
+# 1.0.3 - Fix: filters array no longer starts with empty string (removed leading space in CLI)
 # 1.0.2 - Fix: $filters += $filters + x doubled array on every filter append
 # 1.0.1 - Add upscale to stereo if source is mono
 # 1.0.0 - initial relese
@@ -108,7 +109,7 @@ class EAC3 {
         Write-Verbose "Destination File: $($DestinationFile)"
 		
         # Creating Filter
-        $filters = @("")
+        $filters = @()
         if ($this.Resample -ne [Resample]::none) {
             switch ($this.Resample) {
                 to44100Hz { $filters += '-resampleTo44100'; }
