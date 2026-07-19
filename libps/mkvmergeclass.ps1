@@ -1,5 +1,6 @@
 ﻿#requires -version 5
-#Version 1.0.2
+#Version 1.0.3
+# 1.0.3 - Fix: use Path API instead of Split for title fallback
 # 1.0.2 - Add mkvmerge exit code check in MakeFile (warning for 1, throw for >1)
 # 1.0.1 - Add version header, fix grammar in error messages
 # 1.0.0 - initial release
@@ -95,7 +96,7 @@ class MKVMerge {
     }
 
     [void]MakeFile () {
-        if (-not $this.title) {$this.title = $this.DestinationFile.Split("\")[-1];}
+        if (-not $this.title) {$this.title = [System.IO.Path]::GetFileName($this.DestinationFile);}
         $chapters_cli = "";
         if ($this.ChaptersFile) {
             if (Test-Path -LiteralPath $this.ChaptersFile -PathType Leaf) { $chapters_cli = " --chapters ""$($this.ChaptersFile)""" } else { throw "ERROR: Chapters XML file $($this.ChaptersFile) can't be accessed." }
