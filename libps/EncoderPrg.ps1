@@ -1,5 +1,6 @@
 #Requires -Version 5
-#Version 4.16.0
+#Version 4.17.0
+# 4.17.0 - Add AV1 (libsvtav1) and VVC (libvvenc) support: dynamic video extension based on codec
 # 4.16.0 - Add elapsed time per file/total, total compression ratio, mkvmerge/mkvextract exit code checks, dot-sourcing instead of Invoke-Expression
 # 4.15.6 - Fix: Finally block now only kills processes that are still running
 # 4.15.5 - Remove unused tool definitions and prerequisite checks (neroAacEnc, oggdec, faad, wavi, avs2yuv)
@@ -443,11 +444,13 @@ $totalOutputSize = [long]0
         $videotrack.Custom01 = "$($videotrack.GUID).$($videotrack.Format).src"
         if (-not $take_video_from_source) {
             Write-Host "Source File: $($videotrack.Custom01)" -ForegroundColor Green
-            $videotrack.Custom01 = "$($videotrack.GUID).hevc"
+            $codecExtMap = @{ "libx265" = "hevc"; "libx264" = "264"; "libsvtav1" = "ivf"; "libvvenc" = "266" }
+            $vidExt = $codecExtMap[$codec]
+            $videotrack.Custom01 = "$($videotrack.GUID).$vidExt"
             Write-Host "Destination File: $($videotrack.Custom01)" -ForegroundColor Green
             $Encode = [ffmpeg]::new($ffmpeg_path);
             $Encode.SourceFileAVS = "$enctemp\$($videotrack.GUID).$($videotrack.Format).src";
-            $Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).hevc";
+            $Encode.DestinationFileName = "$enctemp\$($videotrack.GUID).$vidExt";
             $Encode.Quantanizer = $quantanizer;
             $Encode.Preset = $preset;
             $Encode.Tune = $tune;
@@ -473,13 +476,13 @@ $totalOutputSize = [long]0
             $Encode.Denoise.Preset = $denoise[1];
             $Encode.Denoise.CustomParams = $denoise[2];
             $Encode.FPSMode = $fps_mode;
-            $Encode.FramRate = $($videotrack.FrameRate);
+            $Encode.FrameRate = $($videotrack.FrameRate);
             $Encode.Pulldown = $pulldown; 
             $Encode.CustomFilter = $CustomFilter;
             $Encode.CustomModifier = $CustomModifier;
             Write-Verbose "Encode config: $(ConvertTo-Json $Encode -Depth 2)"
             $Encode.Compress();
-            if ($Encode.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-2: Video Encoding $($videotrack.GUID).hevc failed"; $errorcount++ }
+            if ($Encode.EncProcess.ExitCode -gt 0) { Write-Error "Step 3-2: Video Encoding $($videotrack.Custom01) failed"; $errorcount++ }
             $Encode = $null;
         } else {
             Write-Host "Selected Take Video From Source. Encoding - Skipped" -ForegroundColor Green

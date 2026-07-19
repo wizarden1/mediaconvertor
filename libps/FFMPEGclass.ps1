@@ -1,6 +1,10 @@
 ﻿#Requires -Version 5
-
-# Current Version 1.3.1
+#Version 1.5.1
+# 1.5.1 - Fix: rename FramRate to FrameRate, refactor Thqdn3d.UpdateCli
+# 1.5.0 - Add VVC (libvvenc) codec support with preset mapping and qp/qpa params
+# 1.4.0 - Add AV1 (libsvtav1) codec support with preset/tune mapping and svtav1-params
+# 1.3.3 - Add ffmpeg exit code check, fix file existence check, remove dead WindowStyle
+# 1.3.2 - Fix: weak denoise preset now has unique values (was duplicate of light)
 # 1.3.1 - add denoise presets
 # 1.3 - rebuild class TCrop with get/set values, add denoise by Thqdn3d class
 # 1.2 - rename vsync to fps_mode (vsync deprecated)
@@ -11,6 +15,8 @@
 enum codec { 
     libx264
     libx265
+    libsvtav1
+    libvvenc   # requires mkvmerge 81.0+ for muxing into MKV
 }
 
 # encoder
@@ -179,47 +185,45 @@ class Thqdn3d {
         Switch ($this._preset) {
             "default" {
                 $this._cli = "hqdn3d"
+                return
+            }
+            "custom" {
+                $this._cli = "hqdn3d=$($this._customParams)"
+                return
             }
             "ultralight" {
                 $this.luma_spatial = 1
                 $this.chroma_spatial = 0.7
                 $this.luma_tmp = 1
                 $this.chroma_tmp = 2
-                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
+            }
+            "weak" {
+                $this.luma_spatial = 1.5
+                $this.chroma_spatial = 0.8
+                $this.luma_tmp = 1.5
+                $this.chroma_tmp = 2.5
             }
             "light" {
                 $this.luma_spatial = 2
                 $this.chroma_spatial = 1
                 $this.luma_tmp = 2
                 $this.chroma_tmp = 3
-                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
             }
             "medium" {
                 $this.luma_spatial = 3
                 $this.chroma_spatial = 2
                 $this.luma_tmp = 2
                 $this.chroma_tmp = 3
-                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
             }
             "strong" {
                 $this.luma_spatial = 7
                 $this.chroma_spatial = 7
                 $this.luma_tmp = 5
                 $this.chroma_tmp = 5
-                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
-            }
-            "weak" {
-                $this.luma_spatial = 2
-                $this.chroma_spatial = 1
-                $this.luma_tmp = 2
-                $this.chroma_tmp = 3
-                $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
-            }
-            "custom" {
-                $this._cli = "hqdn3d=$($this._customParams)"
             }
             default { throw "ERROR: Unknown denoise preset" }
         }
+        $this._cli = "hqdn3d=$($this.luma_spatial):$($this.chroma_spatial):$($this.luma_tmp):$($this.chroma_tmp)"
     }
 }
 
@@ -235,7 +239,7 @@ class ffmpeg {
     [Presets]$Preset = [Presets]::medium;
     [tune]$Tune = [tune]::none;
     [fps_mode]$FPSMode = [fps_mode]::auto;
-    [string]$FramRate = "24";
+    [string]$FrameRate = "24";
     [codec]$Codec = [codec]::libx265;
     [int16]$Quantanizer = 22;
     [bool]$Enable10bit = $true;
@@ -243,7 +247,7 @@ class ffmpeg {
     [String]$CustomFilter = "";
     [String]$CustomModifier = "";
     [io.fileinfo]$SourceFileAVS;
-    [ValidateSet('.mkv', '.mp4', '.hevc', '.264')]
+    [ValidateSet('.mkv', '.mp4', '.hevc', '.264', '.ivf', '.266')]
     hidden [String]$DestinationFileExtension = ".mkv";
     [io.fileinfo]$DestinationFileName;
 
@@ -271,10 +275,6 @@ class ffmpeg {
         Write-Verbose "File extension: $($this.DestinationFileExtension)"
         $DestinationFile = "$(Join-Path ([io.fileinfo]$this.DestinationFileName).DirectoryName ([io.fileinfo]$this.DestinationFileName).BaseName)$($this.DestinationFileExtension)"
         Write-Verbose "Destination File: $($DestinationFile)"
-        switch ($this.DestinationFileExtension) {
-            '.hevc' { $this.Codec = [codec]::libx265; }
-            '.264' { $this.Codec = [codec]::libx264; }
-        }
         Write-Verbose "Codec set to: $($this.Codec)"
 		
         # Creating Filter
@@ -296,23 +296,67 @@ class ffmpeg {
 
         $modifiers = @()
         if ($this.Enable10bit) { $modifiers += "-pix_fmt yuv420p10le" }
-        if ($this.Tune -ne "none") { $modifiers += "-tune $($this.Tune)" }
         if ($this.FPSMode -ne "auto") { $modifiers += "-fps_mode $($this.FPSMode)" }
         if ($this.Resize.Enabled -and $($this.Resize.Method)) { $modifiers += "-sws_flags $($this.Resize.Method)" }
 
+        # Codec-specific: preset and tune
+        $presetCli = ""
+        $tuneCli = ""
+        $qualityCli = "-crf $($this.Quantanizer)"
+        switch ($this.Codec) {
+            ([codec]::libsvtav1) {
+                # SVT-AV1: preset is numeric 0-13
+                $av1PresetMap = @{
+                    [Presets]::ultrafast = 12; [Presets]::superfast = 10; [Presets]::veryfast = 9;
+                    [Presets]::faster = 8; [Presets]::fast = 7; [Presets]::medium = 6;
+                    [Presets]::slow = 5; [Presets]::slower = 4; [Presets]::veryslow = 3;
+                    [Presets]::placebo = 2
+                }
+                $presetCli = "-preset $($av1PresetMap[$this.Preset])"
+                # SVT-AV1: tune via -svtav1-params (requires SVT-AV1 2.0+ for variance-boost, 1.8+ for qm)
+                $av1Params = @("enable-variance-boost=1", "enable-qm=1", "sharpness=1", "tf-strength=1")
+                switch ($this.Tune) {
+                    "grain"     { $av1Params += "film-grain=8" }
+                    "film"      { $av1Params += "film-grain=4" }
+                    "animation" { }
+                    "psnr"      { $av1Params = @("tune=1") }
+                    "ssim"      { $av1Params += "tune=2" }
+                    default     { }
+                }
+                if ($av1Params.Count -gt 0) { $tuneCli = "-svtav1-params ""$([string]::Join(':', $av1Params))""" }
+            }
+            ([codec]::libvvenc) {
+                # VVC: preset is 0-4 (faster/fast/medium/slow/slower)
+                $vvcPresetMap = @{
+                    [Presets]::ultrafast = 0; [Presets]::superfast = 0; [Presets]::veryfast = 0;
+                    [Presets]::faster = 0; [Presets]::fast = 1; [Presets]::medium = 2;
+                    [Presets]::slow = 3; [Presets]::slower = 4; [Presets]::veryslow = 4;
+                    [Presets]::placebo = 4
+                }
+                $presetCli = "-preset $($vvcPresetMap[$this.Preset])"
+                $qualityCli = "-qp $($this.Quantanizer)"
+                if ($this.Tune -eq "psnr") { $tuneCli = "-qpa 0" } else { $tuneCli = "-qpa 1" }
+            }
+            default {
+                # x264/x265: preset by name, tune by name
+                $presetCli = "-preset $($this.Preset)"
+                if ($this.Tune -ne "none") { $tuneCli = "-tune $($this.Tune)" }
+            }
+        }
+
         $videoModifier = ""
-        if ($modifiers.Length -gt 0) { $videoModifier = [string]::Join(" ", $modifiers) }
+        $allModifiers = $modifiers + @($presetCli, $tuneCli) | Where-Object { $_ }
+        if ($allModifiers.Count -gt 0) { $videoModifier = [string]::Join(" ", $allModifiers) }
         Write-Verbose "Modifiers CLI: $($videoModifier)"
 
         # Encoding
         $startInfo = New-Object System.Diagnostics.ProcessStartInfo
 #        if ($this.FramRate -gt 0) { $FramRate = "-r $($this.FramRate)" } else { $FramRate = "" }
-        $startInfo.Arguments = "-r $($this.FramRate) -i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn -r $($this.FramRate) ""$DestinationFile"""
+        $startInfo.Arguments = "-r $($this.FrameRate) -i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) $qualityCli $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn -r $($this.FrameRate) ""$DestinationFile"""
 #        $startInfo.Arguments = "$FramRate -i ""$($this.SourceFileAVS.FullName)"" -c:v $($this.Codec) -crf $($this.Quantanizer) -preset $($this.Preset) $videoModifier $($this.CustomModifier) $videofilter -an -sn -dn $FramRate ""$DestinationFile"""
         $startInfo.FileName = $this.ffmpeg_path
         Write-Verbose "Executing: $($startInfo.FileName) $($startInfo.Arguments)"
         if (-not $this.DryMode) {
-            $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Minimized
             $startInfo.UseShellExecute = $false
             $process = New-Object System.Diagnostics.Process
             $process.StartInfo = $startInfo
@@ -320,7 +364,8 @@ class ffmpeg {
             $process.PriorityClass = $this.ProcessPriority
             $this.EncProcess = $process
             $process.WaitForExit()
-            if ($(Get-ChildItem $DestinationFile).Length -eq 0) { throw "File $($this.SourceFileAVS.Name) hasn't been compressed." }
+            if ($process.ExitCode -ne 0) { throw "ffmpeg failed with exit code $($process.ExitCode) for $($this.SourceFileAVS.Name)" }
+            if (-not (Test-Path -LiteralPath $DestinationFile) -or (Get-Item -LiteralPath $DestinationFile).Length -eq 0) { throw "File $($this.SourceFileAVS.Name) hasn't been compressed." }
         }
     }
 }

@@ -22,7 +22,7 @@ $Copy_Chapters = $true
 $quantanizer = 24
 $preset = "medium"		           #ultrafast,superfast,veryfast,faster,fast,medium,slow,slower,veryslow,placebo
 #$preset = "ultrafast"
-$codec = "libx265"                         #libx264,libx265
+$codec = "libx265"                         #libx264,libx265,libsvtav1,libvvenc
 $override_fps = ""
 
 #Audio
