@@ -1,4 +1,8 @@
 ﻿#requires -version 5
+#Version 1.0.2
+# 1.0.2 - Add mkvmerge exit code check in MakeFile (warning for 1, throw for >1)
+# 1.0.1 - Add version header, fix grammar in error messages
+# 1.0.0 - initial release
 
 class TVideoTrack {
     hidden [string]$videotrack_cli = "";
@@ -26,7 +30,7 @@ class TVideoTrack {
         #		$this.videotrack_cli += " --compression 0:none";
         #		$this.videotrack_cli += " --no-audio --no-global-tags --no-chapters";
         if ($this.Title) { $this.videotrack_cli += " --track-name 0:""$($this.Title)""" };
-        if (Test-Path -LiteralPath $this.FileName -PathType Leaf) { $this.videotrack_cli += " ""$($this.FileName)""" } else { throw "ERROR: Video File $($this.FileName) doesn't accessible." }
+        if (Test-Path -LiteralPath $this.FileName -PathType Leaf) { $this.videotrack_cli += " ""$($this.FileName)""" } else { throw "ERROR: Video File $($this.FileName) isn't accessible." }
         return $this.videotrack_cli;
     }
 }
@@ -48,7 +52,7 @@ class TAudioTrack {
         #		$this.audiotrack_cli += " --compression 0:none"
         $this.audiotrack_cli += " --no-video --no-global-tags --no-chapters"
         $this.audiotrack_cli += " --track-name 0:""$($this.Title)"""
-        if (Test-Path -LiteralPath $this.FileName -PathType Leaf) { $this.audiotrack_cli += " ""$($this.FileName)""" } else { throw "ERROR: Audio File $($this.FileName) doesn't accessible." }
+        if (Test-Path -LiteralPath $this.FileName -PathType Leaf) { $this.audiotrack_cli += " ""$($this.FileName)""" } else { throw "ERROR: Audio File $($this.FileName) isn't accessible." }
         return $this.audiotrack_cli;
     }
 }
@@ -69,7 +73,7 @@ class TSubtitleTrack {
         #		$this.subtitle_cli += " --subtitle-tracks 0";
         #		$this.subtitle_cli += " --no-video --no-audio --no-track-tags --no-global-tags --no-chapters"
         $this.subtitle_cli += " --track-name 0:""$($this.Title)"""
-        if (Test-Path -LiteralPath $this.FileName -PathType Leaf) { $this.subtitle_cli += " ""$($this.FileName)""" } else { throw "ERROR: Subtitle File $($this.FileName) doesn't accessible." }
+        if (Test-Path -LiteralPath $this.FileName -PathType Leaf) { $this.subtitle_cli += " ""$($this.FileName)""" } else { throw "ERROR: Subtitle File $($this.FileName) isn't accessible." }
         return $this.subtitle_cli;
     }
 }
@@ -108,6 +112,8 @@ class MKVMerge {
         Write-Verbose "Run Command Cli: $($this.MKVMerge_path) --output ""$($this.DestinationFile)"" --title ""$($this.Title)"" $videotrack_cli $audiotrack_cli $chapters_cli $subtitle_cli"
         $proc = Start-Process -Wait -NoNewWindow -PassThru -FilePath $this.MKVMerge_path -ArgumentList "--output ""$($this.DestinationFile)"" --title ""$($this.Title)"" $videotrack_cli $audiotrack_cli $chapters_cli $subtitle_cli"
         $this.EncProcess = $proc
+        if ($proc.ExitCode -eq 1) { Write-Warning "mkvmerge completed with warnings (exit code 1)" }
+        if ($proc.ExitCode -gt 1) { throw "mkvmerge failed with exit code $($proc.ExitCode)" }
     }
 }
 
