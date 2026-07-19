@@ -1,5 +1,6 @@
 ﻿#requires -version 5
-#Version 1.1.1
+#Version 1.1.2
+# 1.1.2 - Fix: Close() calls Dispose on wrapper, collect tracks via List to avoid O(n²) array resize
 # 1.1.1 - Fix: Close() now resets Texttracks
 # 1.1.0 - Deduplicate Open(): parameterless overload delegates to Open(string), fixes missing FrameRate
 # 1.0.1 - Audio channels to integer
@@ -151,6 +152,7 @@ class MediaInfo {
         $this.Copyright = $this.medinfo.General[0].Copyright;
 
         ## Audio
+        $audioList = [System.Collections.Generic.List[MediaInfoAudioTrack]]::new()
         Foreach ($audtrack in $this.medinfo.Audio) {
             $audiotrack = [MediaInfoAudioTrack]::new()
             $audiotrack.ID = $audtrack.ID;
@@ -164,10 +166,12 @@ class MediaInfo {
             $audiotrack.Channels = $audtrack.Channels;
             $audiotrack.SamplingRate = $audtrack.SamplingRate;
             $audiotrack.Default = $audtrack.Default -eq "Yes";
-            $this.Audiotracks += $audiotrack
+            $audioList.Add($audiotrack)
         }
+        $this.Audiotracks = $audioList.ToArray()
 
         ## Video
+        $videoList = [System.Collections.Generic.List[MediaInfoVideoTrack]]::new()
         Foreach ($vidtrack in $this.medinfo.Video) {
             $videotrack = [MediaInfoVideoTrack]::new()
             $videotrack.ID = $vidtrack.ID;
@@ -185,10 +189,12 @@ class MediaInfo {
             $videotrack.Default = $vidtrack.Default -eq "Yes";
             $videotrack.FrameRate = $vidtrack.FrameRate;
             $videotrack.FrameRateMode = $vidtrack.FrameRate_Mode;
-            $this.Videotracks += $videotrack
+            $videoList.Add($videotrack)
         }
+        $this.Videotracks = $videoList.ToArray()
 
         ## Text
+        $textList = [System.Collections.Generic.List[MediaInfoTextTrack]]::new()
         Foreach ($txttrack in $this.medinfo.Text) {
             $texttrack = [MediaInfoTextTrack]::new()
             $texttrack.ID = $txttrack.ID;
@@ -200,8 +206,9 @@ class MediaInfo {
             $texttrack.StreamKindID = $txttrack.StreamKindID;
             $texttrack.CodecID = $txttrack.CodecID;
             $texttrack.Default = $txttrack.Default -eq "Yes";
-            $this.Texttracks += $texttrack
+            $textList.Add($texttrack)
         }
+        $this.Texttracks = $textList.ToArray()
 
         ## Chapters
         $this.Chapters = ($this.medinfo.MenuCount -gt 0)
@@ -209,6 +216,9 @@ class MediaInfo {
     }
 
     [void] Close () {
+        if ($this.medinfo -and $this.medinfo.PSObject.Methods.Name -contains 'Dispose') {
+            $this.medinfo.Dispose()
+        }
         $this.medinfo = $null;
         $this.FullName = "";
         $this.DirectoryName = "";
