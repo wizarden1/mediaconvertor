@@ -1,5 +1,6 @@
 ﻿#requires -version 5
-#Version 1.1.0
+#Version 1.1.1
+# 1.1.1 - Fix: Close() now resets Texttracks
 # 1.1.0 - Deduplicate Open(): parameterless overload delegates to Open(string), fixes missing FrameRate
 # 1.0.1 - Audio channels to integer
 # 1.0.0 - initial relese
@@ -215,6 +216,7 @@ class MediaInfo {
         $this.Extension = "";
         $this.Videotracks = $null;
         $this.Audiotracks = $null;
+        $this.Texttracks = $null;
         $this.Chapters = $false;
     }
 
