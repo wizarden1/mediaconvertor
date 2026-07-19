@@ -1,4 +1,4 @@
-#Requires -Version 5
+#Requires -Version 7
 #Version 4.17.0
 # 4.17.0 - Add AV1 (libsvtav1) and VVC (libvvenc) support: dynamic video extension based on codec
 # 4.16.0 - Add elapsed time per file/total, total compression ratio, mkvmerge/mkvextract exit code checks, dot-sourcing instead of Invoke-Expression

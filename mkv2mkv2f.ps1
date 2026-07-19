@@ -1,4 +1,4 @@
-#Requires -Version 5
+#Requires -Version 7
 #Version 1.1
 # 1.1 - Replace Invoke-Expression with dot-sourcing for correct error line numbers
 # 1.0 - Separate config from main program

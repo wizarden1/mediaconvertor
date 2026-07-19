@@ -1,4 +1,4 @@
-﻿#Requires -Version 5
+﻿#Requires -Version 7
 #Version 1.0.4
 # 1.0.4 - Fix: add exit code checks for ffmpeg, fix path quoting, replace Get-ChildItem with Test-Path, add .raw to ValidateSet
 # 1.0.3 - Fix: filters array no longer starts with empty string (removed leading space in CLI)

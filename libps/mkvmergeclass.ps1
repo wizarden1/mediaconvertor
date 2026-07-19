@@ -1,4 +1,4 @@
-﻿#requires -version 5
+#requires -version 7
 #Version 1.0.3
 # 1.0.3 - Fix: use Path API instead of Split for title fallback
 # 1.0.2 - Add mkvmerge exit code check in MakeFile (warning for 1, throw for >1)

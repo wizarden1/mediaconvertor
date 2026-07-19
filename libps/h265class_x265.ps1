@@ -1,4 +1,4 @@
-﻿#Requires -Version 5
+﻿#Requires -Version 7
 
 # ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow, or placebo
 enum Presets {

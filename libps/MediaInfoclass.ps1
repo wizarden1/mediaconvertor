@@ -1,4 +1,4 @@
-﻿#requires -version 5
+#requires -version 7
 #Version 1.1.2
 # 1.1.2 - Fix: Close() calls Dispose on wrapper, collect tracks via List to avoid O(n²) array resize
 # 1.1.1 - Fix: Close() now resets Texttracks

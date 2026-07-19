@@ -1,4 +1,4 @@
-﻿#Requires -Version 5
+﻿#Requires -Version 7
 #Version 1.5.1
 # 1.5.1 - Fix: rename FramRate to FrameRate, refactor Thqdn3d.UpdateCli
 # 1.5.0 - Add VVC (libvvenc) codec support with preset mapping and qp/qpa params
